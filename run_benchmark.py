@@ -95,12 +95,37 @@ def evaluate_cases():
     else:
         print(" - Ingest Earnings Presentation to evaluate EBITDA bridge.")
 
-    # Case 4: Extraction/Reasoning Failure
-    print("\n[CASE 4: Documented Extraction / Reasoning Failure Mode]")
-    print(" - Failure Scenario: In complex presentation tables with rotated headers or multi-level column groupings,")
-    print("   an LLM can extract metric numbers while failing to bind the 'scope' (reported vs adjusted) or period qualifier.")
-    print(" - Consequence: Unscoped metrics risk spurious direct comparisons.")
-    print(" - Pipeline Defense: Verbatim self-check node + rule-based scope requirement before allowing auto-corroboration.\n")
+    # Case 4: Ambiguity Firewall & Extraction Failure Mode
+    print("\n[CASE 4: Ambiguity Firewall & Failure Mode Defense]")
+    review_rels = db.query(Relationship).filter(Relationship.relation_type == RelationType.NEEDS_REVIEW).all()
+    if review_rels:
+        for r in review_rels[:3]:
+            fa = r.fact_a
+            fb = r.fact_b
+            print(f" - Fact A: [{fa.document.filename if fa.document else 'Doc A'}] {fa.entity} {fa.attribute} = {fa.value} {fa.unit or ''} (period: {fa.period or 'null'}, scope: {fa.scope or 'null'})")
+            print(f" - Fact B: [{fb.document.filename if fb.document else 'Doc B'}] {fb.entity} {fb.attribute} = {fb.value} {fb.unit or ''} (period: {fb.period or 'null'}, scope: {fb.scope or 'null'})")
+            print(f" - Route: {r.decision_route} | Reason: {r.review_reason}")
+            print(f" - Firewall Decision: {r.explanation}\n")
+    else:
+        print(" - Stress-tested failure mode: Dropped scope/period in complex tables.")
+        print(" - Ambiguity Firewall defense: Automatically routes uncertain comparisons to NEEDS_REVIEW.\n")
+
+    # Summary Statistics
+    total_docs = db.query(Document).count()
+    total_facts = db.query(Fact).count()
+    total_rels = db.query(Relationship).count()
+    llm_avoided = db.query(Relationship).filter(
+        Relationship.decision_route.in_(["deterministic_exact", "deterministic_rounding", "irrelevant_pre_filter"])
+    ).count()
+    needs_review = db.query(Relationship).filter(Relationship.relation_type == RelationType.NEEDS_REVIEW).count()
+
+    print_banner("DECISION LEDGER AUDIT METRICS")
+    print(f" Total Documents Ingested:   {total_docs}")
+    print(f" Total Facts Extracted:       {total_facts}")
+    print(f" Total Pairs Evaluated:       {total_rels}")
+    print(f" LLM Calls Avoided (Rules):   {llm_avoided} ({(llm_avoided/max(1, total_rels))*100:.1f}%)")
+    print(f" Unsafe Comparisons Blocked:  {needs_review}")
+    print("=" * 75 + "\n")
 
     db.close()
 
