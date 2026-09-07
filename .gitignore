@@ -1,0 +1,22 @@
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+*.sqlite3
+*.db
+data/
+.env
+.DS_Store
+
+# Stalled/Excluded files per user instruction
+FACT_KNOWLEDGE_LAYER_SPEC.md
+project_report.md
+*project_report*
+debug_pipeline.py
+delhivery/
+india-macroeconomy/
