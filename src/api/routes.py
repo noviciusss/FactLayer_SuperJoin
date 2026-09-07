@@ -57,7 +57,12 @@ class RelationshipResponse(BaseModel):
     relation_type: RelationType
     explanation: str
     confidence: float
-    reconciliation_basis: Optional[str]
+    reconciliation_basis: Optional[str] = None
+    decision_route: Optional[str] = None
+    review_reason: Optional[str] = None
+    comparison_snapshot: Optional[dict] = None
+    extraction_confidence_a: Optional[float] = None
+    extraction_confidence_b: Optional[float] = None
     fact_a: Optional[FactResponse] = None
     fact_b: Optional[FactResponse] = None
 
@@ -250,6 +255,11 @@ def list_relationships(
             explanation=r.explanation,
             confidence=r.confidence,
             reconciliation_basis=r.reconciliation_basis,
+            decision_route=getattr(r, "decision_route", None),
+            review_reason=getattr(r, "review_reason", None),
+            comparison_snapshot=getattr(r, "comparison_snapshot", None),
+            extraction_confidence_a=getattr(r, "extraction_confidence_a", 1.0),
+            extraction_confidence_b=getattr(r, "extraction_confidence_b", 1.0),
             fact_a=FactResponse(
                 id=fa.id, document_id=fa.document_id, chunk_id=fa.chunk_id,
                 entity=fa.entity, attribute=fa.attribute, value=fa.value, unit=fa.unit,
@@ -289,6 +299,11 @@ def get_relationship_detail(rel_id: str, db: Session = Depends(get_db)):
         explanation=r.explanation,
         confidence=r.confidence,
         reconciliation_basis=r.reconciliation_basis,
+        decision_route=getattr(r, "decision_route", None),
+        review_reason=getattr(r, "review_reason", None),
+        comparison_snapshot=getattr(r, "comparison_snapshot", None),
+        extraction_confidence_a=getattr(r, "extraction_confidence_a", 1.0),
+        extraction_confidence_b=getattr(r, "extraction_confidence_b", 1.0),
         fact_a=FactResponse(
             id=fa.id, document_id=fa.document_id, chunk_id=fa.chunk_id,
             entity=fa.entity, attribute=fa.attribute, value=fa.value, unit=fa.unit,
