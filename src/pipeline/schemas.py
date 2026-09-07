@@ -48,9 +48,9 @@ class FactExtractionResponse(BaseModel):
 
 
 class ReconciliationDecision(BaseModel):
-    """LLM adjudication decision between two candidate facts."""
+    """Reconciliation decision between two candidate facts, deterministic or LLM-adjudicated."""
     relation_type: RelationType = Field(
-        description="CORROBORATES (same fact / agreeing numbers), CONTRADICTS (incompatible assertions), RECONCILED (apparent conflict explained by scope/timing/accounting/methodology), or UNRELATED (different facts)"
+        description="CORROBORATES, CONTRADICTS, RECONCILED, UNRELATED, or NEEDS_REVIEW"
     )
     explanation: str = Field(
         description="Thorough explanation grounded in both facts' values, scopes, periods, units, and evidence quotes"
@@ -63,5 +63,17 @@ class ReconciliationDecision(BaseModel):
     )
     reconciliation_basis: Optional[str] = Field(
         default=None,
-        description="If RECONCILED, state the root cause: e.g. 'accounting definition bridge (ESOP and lease add-backs)', 'pro forma restatement vs historical actuals', 'different publication vintage'"
+        description="If RECONCILED, state the root cause: e.g. 'accounting definition bridge', 'pro forma restatement', etc."
+    )
+    decision_route: Optional[str] = Field(
+        default=None,
+        description="Decision source: deterministic_exact, deterministic_rounding, ambiguity_firewall, llm_adjudication, irrelevant_pre_filter"
+    )
+    review_reason: Optional[str] = Field(
+        default=None,
+        description="Reason for NEEDS_REVIEW: missing_period, missing_scope_or_basis, unit_ambiguity, header_context_uncertain, adjudication_unavailable"
+    )
+    comparison_snapshot: Optional[Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Frozen snapshot of compared attributes at decision time"
     )

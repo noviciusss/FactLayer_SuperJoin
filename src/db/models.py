@@ -38,6 +38,7 @@ class RelationType(str, enum.Enum):
     CONTRADICTS = "CONTRADICTS"
     RECONCILED = "RECONCILED"
     UNRELATED = "UNRELATED"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
 
 
 class Document(Base):
@@ -114,6 +115,13 @@ class Relationship(Base):
     explanation = Column(Text, nullable=False)
     confidence = Column(Float, default=1.0)
     reconciliation_basis = Column(Text, nullable=True)
+
+    # Auditable Decision Ledger fields
+    decision_route = Column(String(100), nullable=True)  # e.g., deterministic_exact, ambiguity_firewall, etc.
+    review_reason = Column(String(100), nullable=True)   # e.g., missing_period, missing_scope_or_basis, etc.
+    comparison_snapshot = Column(JSON, default=dict)     # Snapshot of compared attributes at decision time
+    extraction_confidence_a = Column(Float, default=1.0)
+    extraction_confidence_b = Column(Float, default=1.0)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

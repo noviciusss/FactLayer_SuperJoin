@@ -178,7 +178,7 @@ class PipelineOrchestrator:
                         reconciled_pairs.add(pair_key)
 
                         cand_fact = db.query(Fact).filter(Fact.id == cand_fact_id).first()
-                        if not cand_fact:
+                        if not cand_fact or cand_fact.document_id == fact.document_id:
                             continue
 
                         # Check existing relationship in DB
@@ -197,7 +197,12 @@ class PipelineOrchestrator:
                                 relation_type=decision.relation_type,
                                 explanation=decision.explanation,
                                 confidence=decision.confidence,
-                                reconciliation_basis=decision.reconciliation_basis
+                                reconciliation_basis=decision.reconciliation_basis,
+                                decision_route=decision.decision_route,
+                                review_reason=decision.review_reason,
+                                comparison_snapshot=decision.comparison_snapshot or {},
+                                extraction_confidence_a=fact.confidence,
+                                extraction_confidence_b=cand_fact.confidence
                             )
                             db.add(rel)
 
