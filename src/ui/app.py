@@ -40,29 +40,170 @@ code, pre, .mono {
     font-family: 'JetBrains Mono', monospace !important;
 }
 
+/* ── Polished Dark Mode Default Tokens ─────────────────────── */
+:root, [data-theme="dark"], .stApp {
+    --bg-card: #131b2e;
+    --bg-card-hover: #1b263e;
+    --border-card: #23324d;
+    --shadow-card: rgba(0, 0, 0, 0.4);
+    --bg-fact: #0f172a;
+    --border-fact: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --metric-val: #38bdf8;
+
+    /* Evidence Quote - Amber glow on charcoal */
+    --bg-quote: rgba(245, 158, 11, 0.12);
+    --border-quote: #f59e0b;
+    --text-quote: #fef08a;
+
+    /* Decision Box */
+    --bg-decision: #0b0f17;
+    --border-decision: #1e293b;
+    --text-decision: #cbd5e1;
+    --text-decision-bold: #f8fafc;
+    --basis-color: #818cf8;
+
+    /* Matrix Table */
+    --border-matrix: #334155;
+    --bg-matrix-header: #1e293b;
+    --text-matrix: #f8fafc;
+
+    /* Case 4 Box */
+    --bg-case4: rgba(244, 63, 94, 0.12);
+    --border-case4: #f43f5e;
+    --text-case4: #ffe4e6;
+
+    /* Badges */
+    --badge-corroborates-bg: #064e3b;
+    --badge-corroborates-txt: #6ee7b7;
+    --badge-corroborates-border: #059669;
+
+    --badge-contradicts-bg: #7f1d1d;
+    --badge-contradicts-txt: #fca5a5;
+    --badge-contradicts-border: #dc2626;
+
+    --badge-reconciled-bg: #3b0764;
+    --badge-reconciled-txt: #d8b4fe;
+    --badge-reconciled-border: #7c3aed;
+
+    --badge-review-bg: #451a03;
+    --badge-review-txt: #fcd34d;
+    --badge-review-border: #d97706;
+
+    --badge-route-bg: #172554;
+    --badge-route-txt: #93c5fd;
+    --badge-route-border: #2563eb;
+
+    --badge-reason-bg: #500724;
+    --badge-reason-txt: #f9a8d4;
+    --badge-reason-border: #db2777;
+
+    /* Pill Badges */
+    --pill-pass-bg: #064e3b;
+    --pill-pass-txt: #6ee7b7;
+    --pill-fail-bg: #7f1d1d;
+    --pill-fail-txt: #fca5a5;
+    --pill-blocked-bg: #451a03;
+    --pill-blocked-txt: #fcd34d;
+
+    /* KPI Highlights */
+    --kpi-success: #34d399;
+    --kpi-warning: #fbbf24;
+}
+
+/* ── Light Mode Override Tokens (Only when explicitly selected) ─── */
+[data-theme="light"] {
+    --bg-card: #ffffff;
+    --bg-card-hover: #f8fafc;
+    --border-card: #cbd5e1;
+    --shadow-card: rgba(15, 23, 42, 0.08);
+    --bg-fact: #f8fafc;
+    --border-fact: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --metric-val: #0284c7;
+    
+    --bg-quote: #fef9c3;
+    --border-quote: #ca8a04;
+    --text-quote: #713f12;
+
+    --bg-decision: #f8fafc;
+    --border-decision: #cbd5e1;
+    --text-decision: #334155;
+    --text-decision-bold: #0f172a;
+    --basis-color: #4338ca;
+
+    --border-matrix: #e2e8f0;
+    --bg-matrix-header: #f1f5f9;
+    --text-matrix: #0f172a;
+
+    --bg-case4: #fff1f2;
+    --border-case4: #e11d48;
+    --text-case4: #881337;
+
+    --badge-corroborates-bg: #dcfce7;
+    --badge-corroborates-txt: #166534;
+    --badge-corroborates-border: #166534;
+
+    --badge-contradicts-bg: #fee2e2;
+    --badge-contradicts-txt: #991b1b;
+    --badge-contradicts-border: #991b1b;
+
+    --badge-reconciled-bg: #ede9fe;
+    --badge-reconciled-txt: #5b21b6;
+    --badge-reconciled-border: #5b21b6;
+
+    --badge-review-bg: #fef3c7;
+    --badge-review-txt: #92400e;
+    --badge-review-border: #b45309;
+
+    --badge-route-bg: #eff6ff;
+    --badge-route-txt: #1d4ed8;
+    --badge-route-border: #3b82f6;
+
+    --badge-reason-bg: #fdf2f8;
+    --badge-reason-txt: #be185d;
+    --badge-reason-border: #db2777;
+
+    --pill-pass-bg: #dcfce7;
+    --pill-pass-txt: #166534;
+    --pill-fail-bg: #fee2e2;
+    --pill-fail-txt: #991b1b;
+    --pill-blocked-bg: #fef3c7;
+    --pill-blocked-txt: #92400e;
+
+    --kpi-success: #166534;
+    --kpi-warning: #b45309;
+}
+
 /* Signal Block Cards */
 .signal-card {
-    background: #ffffff;
-    border: 2px solid #0f172a;
+    background: var(--bg-card) !important;
+    border: 1.5px solid var(--border-card) !important;
     border-radius: 8px;
-    box-shadow: 4px 4px 0px #0f172a;
+    box-shadow: 0 4px 12px var(--shadow-card);
     padding: 1.25rem;
     margin-bottom: 1.25rem;
-    transition: transform 0.1s ease-in-out;
+    color: var(--text-primary) !important;
+    transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
 .signal-card:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 5px 5px 0px #0f172a;
+    transform: translateY(-2px);
+    border-color: #3b82f6 !important;
 }
 
 /* Fact Mini-Card */
 .fact-box {
-    background: #f8fafc;
-    border: 1.5px solid #334155;
-    border-radius: 6px;
+    background: var(--bg-fact) !important;
+    border: 1px solid var(--border-fact) !important;
+    border-radius: 8px;
     padding: 1rem;
     height: 100%;
+    color: var(--text-primary) !important;
 }
 
 /* Badge Tags */
@@ -74,52 +215,52 @@ code, pre, .mono {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-radius: 4px;
-    border: 1.5px solid #0f172a;
+    border: 1.5px solid var(--border-card);
 }
 
 .badge-corroborates {
-    background-color: #dcfce7;
-    color: #166534;
-    border-color: #166534;
+    background-color: var(--badge-corroborates-bg);
+    color: var(--badge-corroborates-txt);
+    border-color: var(--badge-corroborates-border);
 }
 
 .badge-contradicts {
-    background-color: #fee2e2;
-    color: #991b1b;
-    border-color: #991b1b;
+    background-color: var(--badge-contradicts-bg);
+    color: var(--badge-contradicts-txt);
+    border-color: var(--badge-contradicts-border);
 }
 
 .badge-reconciled {
-    background-color: #ede9fe;
-    color: #5b21b6;
-    border-color: #5b21b6;
+    background-color: var(--badge-reconciled-bg);
+    color: var(--badge-reconciled-txt);
+    border-color: var(--badge-reconciled-border);
 }
 
 .badge-needs_review {
-    background-color: #fef3c7;
-    color: #92400e;
-    border-color: #b45309;
+    background-color: var(--badge-review-bg);
+    color: var(--badge-review-txt);
+    border-color: var(--badge-review-border);
 }
 
 .badge-unrelated {
-    background-color: #f1f5f9;
-    color: #475569;
-    border-color: #475569;
+    background-color: var(--bg-card);
+    color: var(--text-muted);
+    border-color: var(--border-card);
 }
 
 .badge-route {
-    background-color: #eff6ff;
-    color: #1d4ed8;
-    border-color: #3b82f6;
+    background-color: var(--badge-route-bg);
+    color: var(--badge-route-txt);
+    border-color: var(--badge-route-border);
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.72rem;
     text-transform: none;
 }
 
 .badge-reason {
-    background-color: #fdf2f8;
-    color: #be185d;
-    border-color: #db2777;
+    background-color: var(--badge-reason-bg);
+    color: var(--badge-reason-txt);
+    border-color: var(--badge-reason-border);
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.72rem;
     text-transform: none;
@@ -127,13 +268,14 @@ code, pre, .mono {
 
 /* Evidence Quote Block */
 .evidence-quote {
-    background-color: #fef9c3;
-    border-left: 3px solid #ca8a04;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
+    background-color: var(--bg-quote) !important;
+    border-left: 3px solid var(--border-quote) !important;
+    color: var(--text-quote) !important;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.86rem;
     font-style: italic;
     margin-top: 0.5rem;
-    border-radius: 0 4px 4px 0;
+    border-radius: 0 6px 6px 0;
 }
 
 /* Metric Display */
@@ -141,16 +283,16 @@ code, pre, .mono {
     font-family: 'JetBrains Mono', monospace;
     font-size: 1.35rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--metric-val) !important;
 }
 
 /* KPI Stat Cards */
 .kpi-stat-card {
-    background: #ffffff;
-    border: 1.5px solid #0f172a;
-    border-radius: 6px;
-    box-shadow: 3px 3px 0px #0f172a;
-    padding: 0.75rem 1rem;
+    background: var(--bg-card) !important;
+    border: 1.5px solid var(--border-card) !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--shadow-card);
+    padding: 0.85rem 1rem;
     text-align: center;
 }
 
@@ -158,15 +300,24 @@ code, pre, .mono {
     font-family: 'JetBrains Mono', monospace;
     font-size: 1.6rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-primary) !important;
+}
+
+.kpi-stat-num.kpi-stat-success {
+    color: var(--kpi-success) !important;
+}
+
+.kpi-stat-num.kpi-stat-warning {
+    color: var(--kpi-warning) !important;
 }
 
 .kpi-stat-label {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
-    color: #64748b;
+    color: var(--text-muted) !important;
     font-weight: 700;
-    margin-top: 0.2rem;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
 }
 
 /* Alignment Matrix Table */
@@ -175,16 +326,23 @@ code, pre, .mono {
     font-size: 0.82rem;
     border-collapse: collapse;
     margin-top: 0.5rem;
+    color: var(--text-matrix) !important;
 }
 
 .matrix-table td, .matrix-table th {
-    padding: 4px 8px;
-    border: 1px solid #e2e8f0;
+    padding: 6px 8px;
+    border: 1px solid var(--border-matrix) !important;
+    color: var(--text-matrix) !important;
+}
+
+.matrix-table th {
+    background: var(--bg-matrix-header) !important;
+    font-weight: 700;
 }
 
 .pill-pass {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--pill-pass-bg);
+    color: var(--pill-pass-txt);
     padding: 2px 6px;
     border-radius: 4px;
     font-weight: 700;
@@ -192,8 +350,8 @@ code, pre, .mono {
 }
 
 .pill-fail {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--pill-fail-bg);
+    color: var(--pill-fail-txt);
     padding: 2px 6px;
     border-radius: 4px;
     font-weight: 700;
@@ -201,21 +359,32 @@ code, pre, .mono {
 }
 
 .pill-blocked {
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--pill-blocked-bg);
+    color: var(--pill-blocked-txt);
     padding: 2px 6px;
     border-radius: 4px;
     font-weight: 700;
     font-size: 0.72rem;
 }
 
+/* Grounded System Decision Box */
+.decision-box {
+    margin-top: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: var(--bg-decision) !important;
+    border: 1px solid var(--border-decision) !important;
+    border-radius: 8px;
+    color: var(--text-decision) !important;
+}
+
 /* Case 4 Box */
 .case4-box {
-    background: #fff1f2;
-    border: 2px dashed #e11d48;
+    background: var(--bg-case4) !important;
+    border: 2px dashed var(--border-case4) !important;
     border-radius: 8px;
     padding: 1.25rem;
     margin-bottom: 1rem;
+    color: var(--text-case4) !important;
 }
 </style>
 """
@@ -524,14 +693,14 @@ elif nav == "3. Decision Ledger":
     with c4:
         md_html(f"""
         <div class="kpi-stat-card">
-            <div class="kpi-stat-num" style="color: #166534;">{metrics['llm_avoided']}</div>
+            <div class="kpi-stat-num kpi-stat-success">{metrics['llm_avoided']}</div>
             <div class="kpi-stat-label">LLM Calls Avoided</div>
         </div>
         """)
     with c5:
         md_html(f"""
         <div class="kpi-stat-card">
-            <div class="kpi-stat-num" style="color: #b45309;">{metrics['blocked_reviews']}</div>
+            <div class="kpi-stat-num kpi-stat-warning">{metrics['blocked_reviews']}</div>
             <div class="kpi-stat-label">Reviews Blocked</div>
         </div>
         """)
@@ -574,7 +743,7 @@ elif nav == "3. Decision Ledger":
                         badge_html += f' <span class="badge badge-reason">Reason: {reason_str}</span>'
                     st.markdown(badge_html, unsafe_allow_html=True)
                 with col_head2:
-                    st.markdown(f'<div style="text-align: right; font-size: 0.8rem; color: #64748b; font-family: monospace;">Rel ID: <b>{r.id[:8]}</b> | Conf: <b>{round(r.confidence, 2)}</b></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div style="text-align: right; font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">Rel ID: <b>{r.id[:8]}</b> | Conf: <b>{round(r.confidence, 2)}</b></div>', unsafe_allow_html=True)
 
                 # Fact A and Fact B Side-by-Side
                 c1, c2 = st.columns(2)
@@ -584,12 +753,12 @@ elif nav == "3. Decision Ledger":
                 with c1:
                     md_html(f"""
                     <div class="fact-box">
-                        <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">
                             FACT A: {fa.document.filename if fa and fa.document else 'Doc A'} (p.{fa.chunk.page_number if fa and fa.chunk else '?'})
                         </div>
-                        <div style="font-size: 1.05rem; font-weight: 700; margin-top: 0.25rem;">{fa.entity if fa else 'N/A'} — {fa.attribute if fa else 'N/A'}</div>
-                        <div class="metric-value">{fa.value if fa else ''} <span style="font-size: 0.9rem;">{fa.unit or '' if fa else ''}</span></div>
-                        <div style="font-size: 0.82rem; margin-top: 0.25rem; color: #475569;">
+                        <div style="font-size: 1.05rem; font-weight: 700; margin-top: 0.25rem; color: var(--text-primary);">{fa.entity if fa else 'N/A'} — {fa.attribute if fa else 'N/A'}</div>
+                        <div class="metric-value">{fa.value if fa else ''} <span style="font-size: 0.9rem; color: var(--text-muted);">{fa.unit or '' if fa else ''}</span></div>
+                        <div style="font-size: 0.82rem; margin-top: 0.25rem; color: var(--text-secondary);">
                             <b>Period:</b> <code>{fa.period or 'null'}</code> | <b>Scope:</b> <code>{fa.scope or 'null'}</code>
                         </div>
                         <div class="evidence-quote">"{fa.evidence_quote if fa else ''}"</div>
@@ -599,12 +768,12 @@ elif nav == "3. Decision Ledger":
                 with c2:
                     md_html(f"""
                     <div class="fact-box">
-                        <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">
                             FACT B: {fb.document.filename if fb and fb.document else 'Doc B'} (p.{fb.chunk.page_number if fb and fb.chunk else '?'})
                         </div>
-                        <div style="font-size: 1.05rem; font-weight: 700; margin-top: 0.25rem;">{fb.entity if fb else 'N/A'} — {fb.attribute if fb else 'N/A'}</div>
-                        <div class="metric-value">{fb.value if fb else ''} <span style="font-size: 0.9rem;">{fb.unit or '' if fb else ''}</span></div>
-                        <div style="font-size: 0.82rem; margin-top: 0.25rem; color: #475569;">
+                        <div style="font-size: 1.05rem; font-weight: 700; margin-top: 0.25rem; color: var(--text-primary);">{fb.entity if fb else 'N/A'} — {fb.attribute if fb else 'N/A'}</div>
+                        <div class="metric-value">{fb.value if fb else ''} <span style="font-size: 0.9rem; color: var(--text-muted);">{fb.unit or '' if fb else ''}</span></div>
+                        <div style="font-size: 0.82rem; margin-top: 0.25rem; color: var(--text-secondary);">
                             <b>Period:</b> <code>{fb.period or 'null'}</code> | <b>Scope:</b> <code>{fb.scope or 'null'}</code>
                         </div>
                         <div class="evidence-quote">"{fb.evidence_quote if fb else ''}"</div>
@@ -658,10 +827,10 @@ elif nav == "3. Decision Ledger":
 
                 # Grounded System Decision
                 md_html(f"""
-                <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;">
-                    <div style="font-weight: 700; font-size: 0.88rem; color: #0f172a;">Grounded System Decision:</div>
-                    <div style="font-size: 0.88rem; color: #334155; margin-top: 0.25rem;">{r.explanation}</div>
-                    {f'<div style="font-size: 0.82rem; color: #4338ca; margin-top: 0.5rem; font-weight: 600;"><b>Reconciliation Basis:</b> {r.reconciliation_basis}</div>' if r.reconciliation_basis else ''}
+                <div class="decision-box">
+                    <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-decision-bold);">Grounded System Decision:</div>
+                    <div style="font-size: 0.88rem; color: var(--text-decision); margin-top: 0.25rem;">{r.explanation}</div>
+                    {f'<div style="font-size: 0.82rem; color: var(--basis-color); margin-top: 0.5rem; font-weight: 600;"><b>Reconciliation Basis:</b> {r.reconciliation_basis}</div>' if r.reconciliation_basis else ''}
                 </div>
                 """)
 
