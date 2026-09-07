@@ -245,8 +245,11 @@ fact-layer/
 │   ├── test_self_check.py       # Quote validation & deduplication (T-03, T-04)
 │   ├── test_reconciliation.py   # Firewall rules & Decimal tolerance (T-05 to T-12)
 │   └── test_generalization.py   # Domain-agnostic schema validation (I-04)
-├── Dockerfile
-├── docker-compose.yml
+├── .streamlit/
+│   └── config.toml              # Streamlit dark theme & server configuration
+├── Dockerfile.backend           # FastAPI container definition
+├── Dockerfile.frontend          # Streamlit UI container definition
+├── docker-compose.yml           # Multi-service stack (Postgres, Qdrant, API, UI)
 └── README.md
 ```
 
