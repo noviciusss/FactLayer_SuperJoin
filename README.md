@@ -6,6 +6,22 @@
 
 ---
 
+## 🎥 Video Walkthrough & Demo
+
+[![Watch DealGuard Demo on Loom](https://img.shields.io/badge/Loom_Demo-Watch_Video_Walkthrough-8257E5?style=for-the-badge&logo=loom&logoColor=white)](https://www.loom.com/share/16334c8b46774f5fb9ebc3b6a60318b3)
+
+**[▶ Watch Full Video Walkthrough on Loom](https://www.loom.com/share/16334c8b46774f5fb9ebc3b6a60318b3)**
+
+<sub>**The video shows:**</sub>  
+<sub>• A PDF entering the ingestion pipeline</sub>  
+<sub>• Evidence-grounded fact inspection</sub>  
+<sub>• Cross-document corroboration</sub>  
+<sub>• A likely contradiction</sub>  
+<sub>• Contextual reconciliation</sub>  
+<sub>• An extraction/reasoning failure safely routed to `NEEDS_REVIEW`</sub>
+
+---
+
 ## 1. Problem Statement
 
 Financial analysts preparing IPO prospectuses and S-1 filings manage metrics scattered across annual reports, draft prospectuses, quarterly investor presentations, statutory disclosures, and macroeconomic releases. The same financial metric frequently differs due to reporting timeframe (`Q4 FY24` vs `FY24`), consolidation scope (`standalone` vs `consolidated`), accounting convention (`reported` vs `adjusted` EBITDA), pro forma acquisition restatements (SpotOn acquisition), or dropped table headers during PDF parsing. Standard LLM pipelines blindly compare numbers based on semantic similarity, converting missing reporting context into confident, hallucinated financial contradictions. In institutional financial due diligence, equity research, and M&A valuation work broadly, audit workflows cannot tolerate stochastic guesses: an undetected discrepancy or a phantom contradiction can derail regulatory clearance, distort DCF projections, and undermine transaction pricing. In financial due diligence, **a false contradiction is worse than an abstention**. DealGuard extracts evidence-grounded facts from dense documents, reconciles them across filings, and refuses unsafe comparisons when the reporting basis is incomplete.
