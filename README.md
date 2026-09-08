@@ -24,7 +24,7 @@
 
 ## 1. Problem Statement
 
-Financial analysts preparing IPO prospectuses and S-1 filings manage metrics scattered across annual reports, draft prospectuses, quarterly investor presentations, statutory disclosures, and macroeconomic releases. The same financial metric frequently differs due to reporting timeframe (`Q4 FY24` vs `FY24`), consolidation scope (`standalone` vs `consolidated`), accounting convention (`reported` vs `adjusted` EBITDA), pro forma acquisition restatements (SpotOn acquisition), or dropped table headers during PDF parsing. Standard LLM pipelines blindly compare numbers based on semantic similarity, converting missing reporting context into confident, hallucinated financial contradictions. In institutional financial due diligence, equity research, and M&A valuation work broadly, audit workflows cannot tolerate stochastic guesses: an undetected discrepancy or a phantom contradiction can derail regulatory clearance, distort DCF projections, and undermine transaction pricing. In financial due diligence, **a false contradiction is worse than an abstention**. DealGuard extracts evidence-grounded facts from dense documents, reconciles them across filings, and refuses unsafe comparisons when the reporting basis is incomplete.
+Financial analysts preparing IPO prospectuses and related regulatory filings manage metrics scattered across annual reports, draft prospectuses, quarterly investor presentations, statutory disclosures, and macroeconomic releases. The same financial metric frequently differs due to reporting timeframe (`Q4 FY24` vs `FY24`), consolidation scope (`standalone` vs `consolidated`), accounting convention (`reported` vs `adjusted` EBITDA), pro forma acquisition restatements (SpotOn acquisition), or dropped table headers during PDF parsing. Standard LLM pipelines blindly compare numbers based on semantic similarity, converting missing reporting context into confident, hallucinated financial contradictions. In institutional financial due diligence, equity research, and M&A valuation work broadly, audit workflows cannot tolerate stochastic guesses: an undetected discrepancy or a phantom contradiction can derail regulatory clearance, distort DCF projections, and undermine transaction pricing. In financial due diligence, **a false contradiction is worse than an abstention**. DealGuard extracts evidence-grounded facts from dense documents, reconciles them across filings, and refuses unsafe comparisons when the reporting basis is incomplete.
 
 ---
 
@@ -35,8 +35,8 @@ Financial analysts preparing IPO prospectuses and S-1 filings manage metrics sca
 DealGuard introduces an **Ambiguity Firewall** and an auditable **Decision Ledger** featuring `NEEDS_REVIEW` as a first-class verdict:
 
 1. **Refusal to Guess:** If two numerical facts share an entity and attribute but lack reporting period or scope, the Ambiguity Firewall halts comparison *before* invoking an LLM, flagging `missing_period` or `missing_scope_or_basis`.
-2. **Rules-First, LLM-Second:** Deterministic checks resolve exact matches, decimal rounding tolerances (`Decimal` arithmetic with 0.5% relative / 1.0 absolute tolerance), and disjoint pre-filters deterministically. This achieves a **75% LLM Avoidance Rate**, protecting free-tier token quotas and eliminating hallucinations for obvious pairs.
-3. **100% Domain-Agnostic Purity:** DealGuard enforces zero document- or company-specific heuristics. There are no hardcoded conditionals (`if delhivery`, `if EBITDA`, or `if GDP`); all comparisons rely strictly on structured metadata envelopes and general token overlap.
+2. **Rules-First, LLM-Second:** Deterministic checks resolve exact matches, decimal rounding tolerances (`Decimal` arithmetic with 0.5% relative / 1.0 absolute tolerance), and disjoint pre-filters deterministically. This reduces unnecessary model calls for clearly comparable pairs, protecting token quotas. On the versioned gold-set benchmark, deterministic routing resolves many candidate pairs without LLM adjudication. The exact LLM avoidance rate is reported in the evaluation section; live UI counters reflect only the currently stored database run.
+3. **Domain-Agnostic Schema:** DealGuard does not hardcode company names, document filenames, or fixed financial metric fields. Facts use a generic envelope with free-text entity, attribute, period, scope, unit, and flexible qualifiers.
 4. **Field-by-Field Decision Ledger:** Every relationship stores a frozen comparison snapshot (`entity`, `attribute`, `period`, `scope`, `unit`, `value`) recording whether the conclusion was reached via deterministic rules, the ambiguity firewall, or contextual LLM adjudication.
 
 ---
@@ -132,18 +132,21 @@ DealGuard introduces an **Ambiguity Firewall** and an auditable **Decision Ledge
 - **Assertion:** FY22 Figures Restated on Pro Forma Basis (**₹7,054 Cr**) vs Historical Prospectus Actuals (**₹6,881 Cr**)
 - **Source A:** `03-delhivery-q4-fy24-earnings-presentation.pdf` (Footnote: *"FY22 numbers are on pro forma basis"*)
 - **Source B:** `01-delhivery-prospectus-2022-excerpt.pdf` (Historical Actual Financials)
-- **Decision:** `RECONCILED` (or `CONTRADICTS` if prospectus actuals lack the SpotOn acquisition footnote).
+- **Decision:** `RECONCILED` via `llm_adjudication`.
+- **Explanation:** The pro forma basis prevents direct comparison to historical actuals. The difference reflects the post-close restatement incorporating the SpotOn acquisition, which occurred after the 2022 prospectus was issued.
 - **Significance:** Identifies that the apparent discrepancy is an M&A restatement bridge rather than an operational error.
 
-### Case 3: Apparent Contradiction Reconciled by Scope (EBITDA Bridge)
-- **Assertion:** Reported EBITDA FY24 (**₹127 Cr**) vs Adjusted EBITDA FY24 (**₹76 Cr**)
-- **Source:** `03-delhivery-q4-fy24-earnings-presentation.pdf` (Slide 22 / EBITDA Reconciliation Bridge)
-- **Decision:** `RECONCILED` via `llm_adjudication`.
-- **Explanation:** *"Both figures represent FY24 EBITDA for Delhivery Limited. The ₹51 Cr difference is explained by the accounting definition bridge: share-based payment expense (ESOP) and lease adjustments. They are non-competing metrics."*
+### Case 3: Contextual Reconciliation (EBITDA Absolute vs Increase)
+- **Fact A:** FY24 absolute/full-year EBITDA = **₹127 Cr**
+- **Fact B:** FY24 EBITDA increase amount = **₹578 Cr**
+- **Source:** `03-delhivery-q4-fy24-earnings-presentation.pdf`
+- **Context:** FY23 baseline EBITDA was negative **₹452 Cr**
+- **Decision:** `RECONCILED` (Decision Ledger route: `deterministic_rule` / contextual reconciliation).
+- **Explanation:** ₹127 Cr is the FY24 absolute EBITDA, while ₹578 Cr is the increase from the FY23 baseline of negative ₹452 Cr. The two facts describe different measures, and \(-452 + 578 \approx 127\), so they reconcile rather than contradict.
 
 ### Case 4: Real Failure Mode & Ambiguity Firewall Mitigation
 - **Failure Mode:** Dropped Table Headers during extraction of complex multi-column annexes (Reported vs Adjusted or Q4 vs Full Year).
-- **Catastrophic Risk in Naive AI:** Naive LLMs treat the two numbers as competing measurements and hallucinate a confident contradiction.
+- **Risk in a naive pipeline:** Naive LLMs treat the two numbers as competing measurements and make an unsupported contradiction claim.
 - **DealGuard Defense:** The Ambiguity Firewall intercepts the unscoped pair (Rule 5), halts automated contradiction, and assigns `NEEDS_REVIEW` with `review_reason="missing_scope_or_basis"`.
 
 ---
@@ -236,7 +239,7 @@ docker compose up --build
 ```
 fact-layer/
 ├── evals/
-│   ├── gold_relationships.jsonl # 16 curated test cases with expected verdicts
+│   ├── gold_relationships.jsonl # 21 curated test cases with expected verdicts
 │   ├── evaluator.py             # Reproducible evaluation harness
 │   ├── results.json             # Machine-readable evaluation results
 │   └── RESULTS.md               # Human-readable benchmark report
@@ -274,8 +277,19 @@ fact-layer/
 
 ---
 
-## 10. Honest Trade-Offs & Real Limitations
+## 10. Honest Trade-Offs, AI Tools & Next Steps
 
+### Real Limitations & Engineering Trade-Offs
 1. **Complex Table Layouts:** Rotated, split-page, or multi-header tables in scanned PDFs can lose column hierarchy. DealGuard mitigates this by routing facts with uncertain header linkage to `NEEDS_REVIEW` (`header_context_uncertain`) rather than allowing a silent false contradiction.
-2. **Provider Rate Limits:** Free-tier development LLM quotas (e.g. Groq 1,000 OTPM) require asynchronous chunk pacing and a default page limit (`max_pages=10`) for interactive runs. In enterprise production, this is swapped for dedicated private inference endpoints.
+2. **Provider Rate Limits:** Free-tier development LLM quotas (e.g. Groq 1,000 OTPM) require asynchronous chunk pacing and conservative chunk coalescing for interactive runs. In enterprise production, this is swapped for dedicated private inference endpoints.
 3. **Out-of-Corpus Disclosures:** When an adjusted figure references an external reconciliation bridge published in a separate filing not present in the ingested corpus, DealGuard refrains from making a conclusive determination and flags `missing_scope_or_basis`.
+
+### AI Tools Used
+- **Google Antigravity:** Agentic development environment used for rapid iteration, pipeline architecture design, test harness scaffolding, and verification.
+- **Groq API (`openai/gpt-oss-20b` & `qwen/qwen3.6-27b`):** Fast inference execution for open-vocabulary fact extraction, multimodal parsing, and contextual LLM adjudication.
+- **FastEmbed (`BAAI/bge-small-en-v1.5`):** Lightweight local embeddings for statement canonicalization and candidate retrieval in Qdrant.
+
+### Next Steps & Roadmap
+- **Automated Restatement Graphing:** Build temporal version lineage linking historical actuals directly to multi-year pro forma restatements across annual report revisions.
+- **Cross-Lingual Regulatory Support:** Extend parsing to bilingual statutory filings (e.g., SEBI English/Hindi statutory filings).
+- **Active Learning Feedback Loop:** Route analyst overrides on `NEEDS_REVIEW` tickets back into few-shot adjudication examples to continually refine threshold sensitivity.
