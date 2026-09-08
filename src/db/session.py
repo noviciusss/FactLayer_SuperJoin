@@ -53,6 +53,21 @@ def init_db():
     except Exception as e:
         print(f"[init_db Migration Note - content_hash] {e}")
 
+    # Chunk extraction_status migration
+    with engine.connect() as conn:
+        try:
+            if settings.DATABASE_URL.startswith("sqlite"):
+                cursor = conn.execute(text("PRAGMA table_info(chunks)"))
+                chunk_cols = {row[1] for row in cursor.fetchall()}
+                if "extraction_status" not in chunk_cols:
+                    conn.execute(text("ALTER TABLE chunks ADD COLUMN extraction_status VARCHAR(50) DEFAULT 'success'"))
+                    conn.commit()
+            else:
+                conn.execute(text("ALTER TABLE chunks ADD COLUMN IF NOT EXISTS extraction_status VARCHAR(50) DEFAULT 'success'"))
+                conn.commit()
+        except Exception as e:
+            print(f"[init_db Migration Note - chunks.extraction_status] {e}")
+
 
 def get_db():
     """Dependency for obtaining a database session."""

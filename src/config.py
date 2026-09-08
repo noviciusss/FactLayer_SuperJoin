@@ -38,9 +38,13 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite:///./data/fact_layer.db"
 
-    # Execution limits
+    # Execution limits & timeouts
     MAX_EXTRACTION_WORKERS: int = 2
     IMAGE_DENSITY_THRESHOLD: float = 0.15  # Char count / (w * h / 100) below which page is image-heavy
+    LLM_REQUEST_TIMEOUT: float = 30.0  # Explicit Groq / OpenAI HTTP timeout in seconds
+    LLM_MAX_RETRIES: int = 3  # Max retries per call
+    LLM_MAX_BACKOFF: float = 20.0  # Max single retry sleep ceiling
+    DOCUMENT_PROCESSING_TIMEOUT: float = 300.0  # 5-minute backstop timeout per document
 
 
 settings = Settings()

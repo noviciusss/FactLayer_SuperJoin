@@ -69,6 +69,7 @@ class Chunk(Base):
     raw_text = Column(Text, nullable=False)
     is_table = Column(Boolean, default=False)
     image_ref = Column(String(512), nullable=True)  # Path to page preview image or visual clip
+    extraction_status = Column(String(50), default="success", nullable=True)  # "success", "extraction_failed", "rate_limited"
 
     document = relationship("Document", back_populates="chunks")
     facts = relationship("Fact", back_populates="chunk", cascade="all, delete-orphan")

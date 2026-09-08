@@ -1,6 +1,7 @@
 """Master Ingestion Orchestrator running Stages A through E."""
+import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 from src.config import settings
@@ -9,6 +10,7 @@ from src.db.session import SessionLocal
 from src.db.vector_store import vector_store
 from src.pipeline.canonicalizer import canonicalizer
 from src.pipeline.extractor import fact_extractor
+from src.pipeline.llm_client import llm_client
 from src.pipeline.pdf_parser import pdf_parser
 from src.pipeline.reconciliation import reconciliation_engine
 from src.pipeline.schemas import ExtractedFact
@@ -23,10 +25,20 @@ class PipelineOrchestrator:
         except Exception as e:
             print(f"[Orchestrator] Note on vector store init: {e}")
 
-    def process_document(self, document_id: str, max_pages: Optional[int] = None) -> Dict:
+    def process_document(
+        self,
+        document_id: str,
+        max_pages: Optional[int] = None,
+        timeout_seconds: Optional[float] = None
+    ) -> Dict:
         """
-        End-to-end execution of Stages A -> B -> C -> D -> E for a given document.
+        End-to-end execution of Stages A -> B -> C -> D -> E for a given document
+        with document-level timeout backstop and chunk failure tracking.
         """
+        doc_timeout = timeout_seconds or getattr(settings, "DOCUMENT_PROCESSING_TIMEOUT", 300.0)
+        start_time = time.time()
+        deadline = start_time + doc_timeout
+
         db: Session = SessionLocal()
         doc = db.query(Document).filter(Document.id == document_id).first()
         if not doc:
@@ -57,11 +69,15 @@ class PipelineOrchestrator:
                     char_end=pc.char_end,
                     raw_text=pc.raw_text,
                     is_table=pc.is_table,
-                    image_ref=pc.image_ref
+                    image_ref=pc.image_ref,
+                    extraction_status="pending"
                 )
                 db.add(db_chunk)
                 db_chunks.append((db_chunk, pc))
             db.commit()
+
+            if time.time() > deadline:
+                raise TimeoutError(f"Document chunking exceeded total processing deadline of {doc_timeout}s.")
 
             # ───────────────────────────────────────────────────────────
             # Stage B: Fact Extraction (Parallelized) & Self-Check
@@ -83,20 +99,37 @@ class PipelineOrchestrator:
                         p_chunk.page_number,
                         doc_type=doc_type
                     )
-                return db_chunk_obj, raw_facts
+                c_status, c_err = llm_client.get_last_call_status()
+                if not raw_facts and c_status in ("rate_limited", "extraction_failed"):
+                    final_chunk_status = c_status
+                else:
+                    final_chunk_status = "success"
+                return db_chunk_obj, raw_facts, final_chunk_status
 
             extracted_facts_by_chunk = []
+            remaining_b = max(5.0, deadline - time.time())
+            timed_out_stage_b = False
+
             with ThreadPoolExecutor(max_workers=settings.MAX_EXTRACTION_WORKERS) as executor:
                 future_to_chunk = {
                     executor.submit(process_single_chunk, pair): pair for pair in db_chunks
                 }
-                for future in as_completed(future_to_chunk):
-                    try:
-                        db_chunk_obj, raw_facts = future.result()
-                        if raw_facts:
-                            extracted_facts_by_chunk.append((db_chunk_obj, raw_facts))
-                    except Exception as exc:
-                        print(f"[Orchestrator] Error processing chunk: {exc}")
+                try:
+                    for future in as_completed(future_to_chunk, timeout=remaining_b):
+                        try:
+                            db_chunk_obj, raw_facts, c_status = future.result()
+                            db_chunk_obj.extraction_status = c_status
+                            if raw_facts:
+                                extracted_facts_by_chunk.append((db_chunk_obj, raw_facts))
+                        except Exception as exc:
+                            print(f"[Orchestrator] Error processing chunk: {exc}")
+                except TimeoutError:
+                    timed_out_stage_b = True
+                    print(f"[Orchestrator Timeout] Document processing deadline ({doc_timeout}s) reached during Stage B.")
+                    for fut, (c_obj, _) in future_to_chunk.items():
+                        if not fut.done():
+                            fut.cancel()
+                            c_obj.extraction_status = "rate_limited"
 
             # Self-check, hallucination filtering, and deduplication
             seen_hashes = set()
@@ -134,6 +167,30 @@ class PipelineOrchestrator:
 
             db.commit()
 
+            # Count chunk statuses
+            failed_chunks_count = sum(
+                1 for c, _ in db_chunks
+                if getattr(c, "extraction_status", "success") in ("rate_limited", "extraction_failed")
+            )
+
+            if timed_out_stage_b and not new_facts:
+                raise TimeoutError(f"Document processing deadline of {doc_timeout}s reached during Stage B with 0 facts extracted.")
+
+            if not new_facts and failed_chunks_count > 0:
+                doc.status = JobStatus.FAILED
+                doc.error_message = f"Extraction failed: {failed_chunks_count} chunk(s) exhausted retries (rate_limited/extraction_failed) without recovering facts."
+                db.commit()
+                return {
+                    "document_id": doc.id,
+                    "status": "failed",
+                    "error": doc.error_message,
+                    "facts_extracted": 0,
+                    "failed_chunks": failed_chunks_count
+                }
+
+            if time.time() > deadline:
+                raise TimeoutError(f"Document processing deadline of {doc_timeout}s exceeded before Stage C.")
+
             # ───────────────────────────────────────────────────────────
             # Stage C: Canonicalization & Vector Embeddings
             # ───────────────────────────────────────────────────────────
@@ -152,6 +209,9 @@ class PipelineOrchestrator:
                 ]
                 vector_store.upsert_facts(fact_ids, vectors, payloads)
 
+            if time.time() > deadline:
+                raise TimeoutError(f"Document processing deadline of {doc_timeout}s exceeded before Stage D/E.")
+
             # ───────────────────────────────────────────────────────────
             # Stage D & E: Candidate Clustering & Reconciliation
             # ───────────────────────────────────────────────────────────
@@ -162,6 +222,10 @@ class PipelineOrchestrator:
 
             if new_facts:
                 for idx, fact in enumerate(new_facts):
+                    if time.time() > deadline:
+                        print(f"[Orchestrator Timeout] Reconciliation exceeded deadline ({doc_timeout}s). Halting pair search.")
+                        break
+
                     query_vector = vectors[idx]
                     candidates = vector_store.search_candidates(
                         query_vector=query_vector,
@@ -171,6 +235,9 @@ class PipelineOrchestrator:
                     )
 
                     for cand in candidates:
+                        if time.time() > deadline:
+                            break
+
                         cand_fact_id = cand["fact_id"]
                         pair_key = tuple(sorted([fact.id, cand_fact_id]))
                         if pair_key in reconciled_pairs:
@@ -209,15 +276,31 @@ class PipelineOrchestrator:
                 db.commit()
 
             doc.status = JobStatus.DONE
+            if failed_chunks_count > 0:
+                doc.error_message = f"Completed with warnings: {len(new_facts)} facts extracted; {failed_chunks_count} chunk(s) rate-limited or failed extraction."
+            else:
+                doc.error_message = None
             db.commit()
 
             return {
                 "document_id": doc.id,
                 "status": "done",
                 "facts_extracted": len(new_facts),
-                "relationships_found": len(reconciled_pairs)
+                "relationships_found": len(reconciled_pairs),
+                "failed_chunks": failed_chunks_count
             }
 
+        except TimeoutError as te:
+            db.rollback()
+            doc.status = JobStatus.FAILED
+            doc.error_message = f"Document processing timeout exceeded ({doc_timeout}s): {str(te)}"
+            db.commit()
+            print(f"[Orchestrator Timeout] {doc.error_message}")
+            return {
+                "document_id": doc.id,
+                "status": "failed",
+                "error": doc.error_message
+            }
         except Exception as e:
             db.rollback()
             doc.status = JobStatus.FAILED
