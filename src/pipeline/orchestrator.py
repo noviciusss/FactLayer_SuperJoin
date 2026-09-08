@@ -107,29 +107,41 @@ class PipelineOrchestrator:
                 return db_chunk_obj, raw_facts, final_chunk_status
 
             extracted_facts_by_chunk = []
-            remaining_b = max(5.0, deadline - time.time())
-            timed_out_stage_b = False
+            remaining_b = max(0.01, deadline - time.time())
+            if deadline - time.time() <= 0:
+                raise TimeoutError(f"Document processing deadline of {doc_timeout}s reached before Stage B.")
 
-            with ThreadPoolExecutor(max_workers=settings.MAX_EXTRACTION_WORKERS) as executor:
-                future_to_chunk = {
-                    executor.submit(process_single_chunk, pair): pair for pair in db_chunks
-                }
-                try:
-                    for future in as_completed(future_to_chunk, timeout=remaining_b):
-                        try:
-                            db_chunk_obj, raw_facts, c_status = future.result()
-                            db_chunk_obj.extraction_status = c_status
-                            if raw_facts:
-                                extracted_facts_by_chunk.append((db_chunk_obj, raw_facts))
-                        except Exception as exc:
-                            print(f"[Orchestrator] Error processing chunk: {exc}")
-                except TimeoutError:
-                    timed_out_stage_b = True
-                    print(f"[Orchestrator Timeout] Document processing deadline ({doc_timeout}s) reached during Stage B.")
-                    for fut, (c_obj, _) in future_to_chunk.items():
-                        if not fut.done():
-                            fut.cancel()
-                            c_obj.extraction_status = "rate_limited"
+            timed_out_stage_b = False
+            executor = ThreadPoolExecutor(max_workers=settings.MAX_EXTRACTION_WORKERS)
+            future_to_chunk = {
+                executor.submit(process_single_chunk, pair): pair for pair in db_chunks
+            }
+            try:
+                for future in as_completed(future_to_chunk, timeout=remaining_b):
+                    try:
+                        db_chunk_obj, raw_facts, c_status = future.result()
+                        db_chunk_obj.extraction_status = c_status
+                        if raw_facts:
+                            extracted_facts_by_chunk.append((db_chunk_obj, raw_facts))
+                    except Exception as exc:
+                        print(f"[Orchestrator] Error processing chunk: {exc}")
+                executor.shutdown(wait=True)
+            except TimeoutError:
+                timed_out_stage_b = True
+                print(f"[Orchestrator Timeout] Document processing deadline ({doc_timeout}s) reached during Stage B.")
+                # Hard shutdown: cancel pending futures and do not wait on already-launched in-flight calls
+                executor.shutdown(wait=False, cancel_futures=True)
+                for fut, (c_obj, _) in future_to_chunk.items():
+                    if not fut.done():
+                        fut.cancel()
+                        c_obj.extraction_status = "timed_out"
+                    elif getattr(c_obj, "extraction_status", "pending") == "pending":
+                        c_obj.extraction_status = "timed_out"
+                db.commit()
+                raise TimeoutError(f"Document processing deadline of {doc_timeout}s reached during Stage B extraction.")
+            except Exception as e:
+                executor.shutdown(wait=False, cancel_futures=True)
+                raise e
 
             # Self-check, hallucination filtering, and deduplication
             seen_hashes = set()
@@ -167,26 +179,53 @@ class PipelineOrchestrator:
 
             db.commit()
 
-            # Count chunk statuses
+            # Count chunk extraction statuses
+            status_counts = {}
+            for c, _ in db_chunks:
+                st = getattr(c, "extraction_status", "pending") or "unknown"
+                status_counts[st] = status_counts.get(st, 0) + 1
+            breakdown_str = ", ".join(f"{k}: {v}" for k, v in sorted(status_counts.items()))
+
             failed_chunks_count = sum(
                 1 for c, _ in db_chunks
-                if getattr(c, "extraction_status", "success") in ("rate_limited", "extraction_failed")
+                if getattr(c, "extraction_status", "success") in ("rate_limited", "extraction_failed", "timed_out", "cancelled")
             )
 
             if timed_out_stage_b and not new_facts:
                 raise TimeoutError(f"Document processing deadline of {doc_timeout}s reached during Stage B with 0 facts extracted.")
 
-            if not new_facts and failed_chunks_count > 0:
-                doc.status = JobStatus.FAILED
-                doc.error_message = f"Extraction failed: {failed_chunks_count} chunk(s) exhausted retries (rate_limited/extraction_failed) without recovering facts."
-                db.commit()
-                return {
-                    "document_id": doc.id,
-                    "status": "failed",
-                    "error": doc.error_message,
-                    "facts_extracted": 0,
-                    "failed_chunks": failed_chunks_count
-                }
+            # Zero-facts guard: distinguish failed chunks from clean-empty extraction
+            if not new_facts:
+                if failed_chunks_count > 0:
+                    doc.status = JobStatus.FAILED
+                    doc.error_message = (
+                        f"Extraction failed: {failed_chunks_count} chunk(s) exhausted retries "
+                        f"(rate_limited/extraction_failed) without recovering facts ({breakdown_str})."
+                    )
+                    db.commit()
+                    return {
+                        "document_id": doc.id,
+                        "status": "failed",
+                        "error": doc.error_message,
+                        "facts_extracted": 0,
+                        "failed_chunks": failed_chunks_count,
+                        "extraction_status_breakdown": status_counts
+                    }
+                else:
+                    doc.status = JobStatus.DONE_EMPTY
+                    doc.error_message = (
+                        f"0 facts extracted from {len(db_chunks)} processed chunks — "
+                        f"see chunk extraction_status for detail ({breakdown_str})"
+                    )
+                    db.commit()
+                    return {
+                        "document_id": doc.id,
+                        "status": "done_empty",
+                        "error": doc.error_message,
+                        "facts_extracted": 0,
+                        "failed_chunks": failed_chunks_count,
+                        "extraction_status_breakdown": status_counts
+                    }
 
             if time.time() > deadline:
                 raise TimeoutError(f"Document processing deadline of {doc_timeout}s exceeded before Stage C.")
@@ -291,7 +330,7 @@ class PipelineOrchestrator:
             }
 
         except TimeoutError as te:
-            db.rollback()
+            doc = db.query(Document).filter(Document.id == document_id).first() or doc
             doc.status = JobStatus.FAILED
             doc.error_message = f"Document processing timeout exceeded ({doc_timeout}s): {str(te)}"
             db.commit()

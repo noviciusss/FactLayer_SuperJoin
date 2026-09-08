@@ -30,7 +30,18 @@ class JobStatus(str, enum.Enum):
     EXTRACTING = "extracting"
     RECONCILING = "reconciling"
     DONE = "done"
+    DONE_EMPTY = "done_empty"
     FAILED = "failed"
+
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            val_upper = value.upper().strip()
+            val_lower = value.lower().strip()
+            for member in cls:
+                if member.name == val_upper or member.value in (val_lower, val_upper):
+                    return member
+        return None
 
 
 class RelationType(str, enum.Enum):

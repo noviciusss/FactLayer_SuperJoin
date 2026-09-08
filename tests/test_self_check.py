@@ -100,3 +100,30 @@ def test_vision_extraction_path_grounding_pass():
     assert adjusted_conf == 0.7
     assert "Vision extraction path" in reason
 
+
+def test_self_check_multiline_and_footnoted_quote_passes():
+    """Verify that multi-line breaks and footnote markers (e.g., superscripts, brackets) pass grounding check."""
+    # Chunk containing newline break and unicode superscript footnote marker
+    chunk_text = (
+        "In Fiscal Year 2025, India had a nominal\n"
+        "GDP of ₹332 trillion¹ (US$3.91 trillion).\n"
+        "Note(s): 1. Second revised estimates."
+    )
+
+    # LLM quote without the newline or superscript
+    fact = ExtractedFact(
+        entity="India",
+        attribute="nominal GDP",
+        value="332",
+        unit="₹ trillion",
+        period="FY 2025",
+        evidence_quote="India had a nominal GDP of ₹332 trillion",
+        confidence=0.95
+    )
+
+    is_valid, adjusted_conf, reason = self_checker.verify_grounding(fact, chunk_text)
+    assert is_valid is True
+    assert adjusted_conf >= 0.85
+    assert "Verified" in reason
+
+

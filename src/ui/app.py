@@ -455,7 +455,17 @@ def fetch_facts(doc_id=None, entity=None, attribute=None):
         db.close()
 
 
-def fetch_relationships(rel_type=None, decision_route=None, review_reason=None, search=None):
+def fetch_document_by_id(doc_id: str) -> Optional[Document]:
+    if not doc_id:
+        return None
+    db = get_db()
+    try:
+        return db.query(Document).filter(Document.id == doc_id).first()
+    finally:
+        db.close()
+
+
+def fetch_relationships(rel_type=None, decision_route=None, review_reason=None, search=None, document_id=None):
     db = get_db()
     try:
         q = db.query(Relationship).options(
@@ -464,6 +474,9 @@ def fetch_relationships(rel_type=None, decision_route=None, review_reason=None, 
             joinedload(Relationship.fact_b).joinedload(Fact.document),
             joinedload(Relationship.fact_b).joinedload(Fact.chunk),
         )
+        if document_id:
+            fact_ids = [f[0] for f in db.query(Fact.id).filter(Fact.document_id == document_id).all()]
+            q = q.filter((Relationship.fact_a_id.in_(fact_ids)) | (Relationship.fact_b_id.in_(fact_ids)))
         if rel_type and rel_type != "ALL":
             if hasattr(RelationType, rel_type):
                 q = q.filter(Relationship.relation_type == RelationType[rel_type])
@@ -476,8 +489,8 @@ def fetch_relationships(rel_type=None, decision_route=None, review_reason=None, 
         if search:
             q = q.join(Fact, (Relationship.fact_a_id == Fact.id) | (Relationship.fact_b_id == Fact.id)).filter(
                 Fact.entity.ilike(f"%{search}%") | Fact.attribute.ilike(f"%{search}%")
-            ).distinct()
-        return q.order_by(Relationship.created_at.desc()).all()
+            )
+        return q.distinct().order_by(Relationship.created_at.desc()).all()
     finally:
         db.close()
 
@@ -526,6 +539,9 @@ if nav == "1. Ingestion & Documents":
             doc_id = doc.id
             db.close()
 
+            # Set focused document in session state
+            st.session_state["focused_document_id"] = doc_id
+
             st.success(f"Uploaded {uploaded_file.name}. Starting DealGuard pipeline...")
 
             progress_bar = st.progress(10)
@@ -537,6 +553,7 @@ if nav == "1. Ingestion & Documents":
                 res = orchestrator.process_document(doc_id, max_pages=pages_arg)
                 progress_bar.progress(100)
                 status_text.success(f"Processing Complete! Facts: {res['facts_extracted']}, Relationships: {res['relationships_found']}")
+                st.session_state["focused_document_id"] = doc_id
                 st.rerun()
             except Exception as e:
                 status_text.error(f"Processing failed: {e}")
@@ -574,11 +591,15 @@ if nav == "1. Ingestion & Documents":
             doc_id = doc.id
             db.close()
 
+            st.session_state["focused_document_id"] = doc_id
+
             progress_bar = st.progress(20)
             with st.spinner(f"Ingesting {p.name}..."):
                 res = orchestrator.process_document(doc_id, max_pages=int(starter_page_limit))
                 progress_bar.progress(100)
-                st.success(f"Ingested {p.name}: {res['facts_extracted']} facts, {res['relationships_found']} relationships.")
+                status_text = st.empty()
+                status_text.success(f"Ingested {p.name}: {res['facts_extracted']} facts, {res['relationships_found']} relationships.")
+                st.session_state["focused_document_id"] = doc_id
                 st.rerun()
 
     st.divider()
@@ -611,12 +632,45 @@ elif nav == "2. Facts Browser & Grounding":
     st.header("🔍 Extracted Facts & Grounded Evidence")
     st.write("Browse open-vocabulary structured facts with verbatim evidence quotes and high-resolution page image inspection.")
 
+    focused_id = st.session_state.get("focused_document_id")
+    focused_doc = fetch_document_by_id(focused_id) if focused_id else None
+    if focused_id and not focused_doc:
+        st.session_state.pop("focused_document_id", None)
+        focused_id = None
+
+    # If focused document is still processing, show live status polling
+    if focused_doc and focused_doc.status in (JobStatus.QUEUED, JobStatus.CHUNKING, JobStatus.EXTRACTING, JobStatus.RECONCILING):
+        st.info(f"⏳ **Document is currently processing:** `{focused_doc.filename}` (Status: **{focused_doc.status.value.upper()}**)...")
+        with st.spinner("Pipeline active in background..."):
+            time.sleep(2)
+            st.rerun()
+
+    if focused_doc:
+        col_b1, col_b2 = st.columns([4, 1])
+        with col_b1:
+            st.info(f"🎯 **Showing results for your upload:** `{focused_doc.filename}` — Status: **{focused_doc.status.value.upper()}**")
+        with col_b2:
+            if st.button("🌐 View all documents", key="clear_focus_facts"):
+                st.session_state.pop("focused_document_id", None)
+                st.rerun()
+
+        if focused_doc.status == JobStatus.DONE_EMPTY:
+            st.warning(f"⚠️ {focused_doc.error_message}")
+        elif focused_doc.status == JobStatus.FAILED:
+            st.error(f"❌ Extraction failed: {focused_doc.error_message}")
+
     docs = fetch_documents()
     doc_options = {d.id: d.filename for d in docs}
+    default_doc_idx = (list(doc_options.keys()).index(focused_id) + 1) if (focused_id and focused_id in doc_options) else 0
 
     col_f1, col_f2, col_f3 = st.columns([2, 2, 2])
     with col_f1:
-        filter_doc = st.selectbox("Filter by Document", options=["All"] + list(doc_options.keys()), format_func=lambda x: "All Documents" if x == "All" else doc_options.get(x, x))
+        filter_doc = st.selectbox(
+            "Filter by Document",
+            options=["All"] + list(doc_options.keys()),
+            index=default_doc_idx,
+            format_func=lambda x: "All Documents" if x == "All" else doc_options.get(x, x)
+        )
     with col_f2:
         filter_entity = st.text_input("Filter by Entity", placeholder="e.g. Delhivery, India")
     with col_f3:
@@ -708,6 +762,21 @@ elif nav == "3. Decision Ledger":
     st.divider()
 
     # ── Multi-Dimensional Filters ─────────────────────────────────────
+    focused_id = st.session_state.get("focused_document_id")
+    focused_doc = fetch_document_by_id(focused_id) if focused_id else None
+    if focused_id and not focused_doc:
+        st.session_state.pop("focused_document_id", None)
+        focused_id = None
+
+    if focused_doc:
+        col_b1, col_b2 = st.columns([4, 1])
+        with col_b1:
+            st.info(f"🎯 **Showing relationships for your upload:** `{focused_doc.filename}`")
+        with col_b2:
+            if st.button("🌐 View all documents", key="clear_focus_ledger"):
+                st.session_state.pop("focused_document_id", None)
+                st.rerun()
+
     col_r1, col_r2, col_r3, col_r4 = st.columns([1.5, 1.5, 1.5, 2])
     with col_r1:
         filter_type = st.selectbox("Relationship Type", ["ALL", "NEEDS_REVIEW", "CORROBORATES", "CONTRADICTS", "RECONCILED"])
@@ -722,7 +791,8 @@ elif nav == "3. Decision Ledger":
         rel_type=filter_type,
         decision_route=filter_route,
         review_reason=filter_reason,
-        search=filter_search or None
+        search=filter_search or None,
+        document_id=focused_id
     )
 
     st.caption(f"Showing **{len(relationships)}** relationships matching criteria")

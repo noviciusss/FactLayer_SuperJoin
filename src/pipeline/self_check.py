@@ -6,9 +6,19 @@ from src.pipeline.schemas import ExtractedFact
 
 
 def normalize_text(text: str) -> str:
-    """Normalize text by lowering case, removing punctuation, and collapsing whitespace."""
+    """Normalize text by lowering case, stripping footnote markers/superscripts, collapsing whitespace, and stripping punctuation."""
+    if not text:
+        return ""
     text = text.lower()
+    # Strip unicode superscripts and footnote symbols
+    text = re.sub(r"[¹²³⁴⁵⁶⁷⁸⁹⁰*†‡]", " ", text)
+    # Strip bracketed footnote references like [1], (1)
+    text = re.sub(r"\[\d+\]|\(\d+\)", " ", text)
+    # Normalize zero-width spaces, non-breaking spaces, soft hyphens
+    text = re.sub(r"[\u200b\xa0\xad]", " ", text)
+    # Strip punctuation and symbols
     text = re.sub(r"[^\w\s]", " ", text)
+    # Collapse whitespace and newlines
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
@@ -34,18 +44,23 @@ class SelfChecker:
         if norm_quote in norm_chunk:
             return True, fact.confidence, "Verified exact match in source chunk"
 
-        # 2. Token set / n-gram overlap check (handles line break or hyphenation differences)
         quote_words = norm_quote.split()
         if not quote_words:
             return False, 0.0, "Empty evidence quote words"
 
-        # Check if the sequence of words appears with minor gaps
+        # 2. Token overlap and short quote support
         matched_words = sum(1 for w in quote_words if w in norm_chunk)
         overlap_ratio = matched_words / len(quote_words)
 
-        if overlap_ratio >= 0.85 and len(quote_words) >= 3:
-            # High overlap with minor variation: keep but slightly penalize confidence
-            adjusted_conf = round(max(0.3, fact.confidence * 0.9), 2)
+        # For short quotes (1-2 words), if all words appear in chunk, accept
+        if len(quote_words) <= 2:
+            if matched_words == len(quote_words) or norm_quote in norm_chunk.replace(" ", ""):
+                return True, fact.confidence, "Verified short quote match in source chunk"
+
+        # For multi-line, footnoted, or slightly varied quotes (>= 70% overlap)
+        if overlap_ratio >= 0.70:
+            adj = 0.95 if overlap_ratio >= 0.85 else 0.90
+            adjusted_conf = round(max(0.3, fact.confidence * adj), 2)
             return True, adjusted_conf, f"Verified fuzzy match ({round(overlap_ratio*100)}% token overlap)"
 
         # 3. Grounding failed: evidence quote does NOT appear in source text

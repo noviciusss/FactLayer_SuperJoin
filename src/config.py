@@ -20,13 +20,23 @@ class Settings(BaseSettings):
     QDRANT_STORAGE_PATH: Path = DATA_DIR / "qdrant"
 
     # LLM Settings
-    LLM_PROVIDER: str = "groq"  # "groq" or "openai"
+    LLM_PROVIDER: str = "groq"  # "groq", "azure", or "openai"
+    AZURE_OPENAI_KEY: Optional[str] = None
+    AZURE_OPENAI_ENDPOINT: Optional[str] = None
+    AZURE_OPENAI_DEPLOYMENT: str = "gpt-5"
+    AZURE_DOC_INTELLIGENCE_ENDPOINT: Optional[str] = None
+    AZURE_DOC_INTELLIGENCE_KEY: Optional[str] = None
+
     GROQ_API_KEY: Optional[str] = None
+    GROQ_API_KEY_SECONDARY: Optional[str] = None
+    GROQ_API_KEY_3: Optional[str] = None
+    GROQ_API_KEY_4: Optional[str] = None
+    GROQ_API_KEYS: Optional[str] = None  # Comma-separated list of keys
     OPENAI_API_KEY: Optional[str] = None
-    LLM_MODEL: str = "llama-3.3-70b-versatile"
+    LLM_MODEL: str = "openai/gpt-oss-20b"
     VISION_MODEL: str = "qwen/qwen3.6-27b"
-    ADJUDICATION_MODEL: str = "openai/gpt-oss-120b"
-    FAST_CHECK_MODEL: str = "llama-3.1-8b-instant"
+    ADJUDICATION_MODEL: str = "openai/gpt-oss-20b"
+    FAST_CHECK_MODEL: str = "openai/gpt-oss-20b"
 
     # Embedding & Vector Store
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
@@ -41,10 +51,11 @@ class Settings(BaseSettings):
     # Execution limits & timeouts
     MAX_EXTRACTION_WORKERS: int = 2
     IMAGE_DENSITY_THRESHOLD: float = 0.15  # Char count / (w * h / 100) below which page is image-heavy
-    LLM_REQUEST_TIMEOUT: float = 30.0  # Explicit Groq / OpenAI HTTP timeout in seconds
+    LLM_REQUEST_TIMEOUT: float = 60.0  # Explicit Groq / Azure / OpenAI HTTP timeout in seconds
     LLM_MAX_RETRIES: int = 3  # Max retries per call
     LLM_MAX_BACKOFF: float = 20.0  # Max single retry sleep ceiling
     DOCUMENT_PROCESSING_TIMEOUT: float = 300.0  # 5-minute backstop timeout per document
+    MAX_CHUNK_SIZE: int = 2400  # Max characters per coalesced chunk to stay well under LLM context
 
 
 settings = Settings()

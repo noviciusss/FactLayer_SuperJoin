@@ -1,7 +1,7 @@
 # DealGuard Gold Set Evaluation Results
 
-- **Evaluation Date:** 2026-09-08T06:02:30.452802Z
-- **Git Commit:** `64774e4aa8aaa2c10ecc6f5380e0758daa776205`
+- **Evaluation Date:** 2026-09-08T08:15:45.675380Z
+- **Git Commit:** `d5e9a9a73752e19f61bed9835c09f00d31e44e43`
 - **Total Evaluated Cases:** 21
 - **Ambiguity Firewall Safety Cases:** 5
 

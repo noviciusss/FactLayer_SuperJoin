@@ -1,7 +1,7 @@
 {
   "benchmark_name": "DealGuard Gold Evaluation Set",
-  "commit_sha": "64774e4aa8aaa2c10ecc6f5380e0758daa776205",
-  "timestamp": "2026-09-08T06:02:30.452802Z",
+  "commit_sha": "d5e9a9a73752e19f61bed9835c09f00d31e44e43",
+  "timestamp": "2026-09-08T08:15:45.675380Z",
   "total_cases": 21,
   "metrics": {
     "relationship_accuracy": 0.9524,
@@ -93,7 +93,7 @@
       "actual_review_reason": null,
       "label_correct": true,
       "safety_violation": false,
-      "explanation": "Both facts refer to Delhivery's EBITDA for FY24, but they measure different concepts. Fact A reports the company's standard (GAAP) EBITDA of \u20b9127\u202fCr, explicitly labelled as \"reported_ebitda\". Fact B reports an \"adjusted_ebitda\" of \u20b976\u202fCr, which excludes share\u2011based payments and lease rent adjustments. Because the scope (reported vs adjusted) and the accounting basis differ, the values are not expected to match. The discrepancy is therefore explained by the differing definitions rather than a factual error, so the two statements are reconciled through the accounting definition bridge."
+      "explanation": "Both facts refer to Delhivery's EBITDA for FY24, but they measure different concepts. Fact A reports the company's standard (GAAP) EBITDA of \u20b9127\u202fCr, explicitly labeled as \"reported EBITDA\". Fact B reports an \"adjusted EBITDA\" of \u20b976\u202fCr that excludes share\u2011based payments and lease rent, as indicated by the qualifiers and evidence quote. Because the scopes (reported vs adjusted) and the accounting bases differ, the values are not expected to match. The discrepancy is therefore explained by the differing definitions rather than a factual conflict, so the facts are reconciled."
     },
     {
       "id": "gold-007",
@@ -106,7 +106,7 @@
       "actual_review_reason": null,
       "label_correct": true,
       "safety_violation": false,
-      "explanation": "Both facts refer to Delhivery's revenue from operations for FY22, but they are measured on different reporting bases. Fact A is a pro forma revenue figure that incorporates the SpotOn acquisition, resulting in a higher amount of \u20b97,054\u202fCr. Fact B reports the historical actual revenue, which excludes the acquisition, and therefore shows a lower amount of \u20b96,881\u202fCr. The discrepancy in values is fully explained by the differing scope (pro forma vs historical actual) and the explicit qualifier that Fact A includes the SpotOn acquisition while Fact B has no restatement. Hence the two numbers are reconcilable rather than contradictory."
+      "explanation": "Both facts refer to Delhivery's revenue from operations for FY22, but they are reported on different bases. Fact A is a pro forma figure that incorporates the SpotOn acquisition, explicitly stating a restatement for that acquisition and giving a revenue of \u20b97,054\u202fCr. Fact B is the historical actual revenue reported in the 2022 prospectus, with no restatement, and shows \u20b96,881\u202fCr. The difference of \u20b9173\u202fCr is attributable to the inclusion of SpotOn's contribution in the pro forma calculation. Because the scopes (pro forma vs historical actual) differ, the values are not contradictory but represent the same metric under different reporting bases, satisfying the RECONCILED classification."
     },
     {
       "id": "gold-008",
@@ -119,7 +119,7 @@
       "actual_review_reason": null,
       "label_correct": true,
       "safety_violation": false,
-      "explanation": "Both facts refer to India's real GDP growth for FY24, but they are based on different reporting bases. Fact A is an advance projection (forecast) from the January 2023 Economic Survey, estimating growth at 6.5%. Fact B is an actual provisional estimate released by the CSO in May 2024, reporting growth at 8.2%. Because the scope (forecast vs actual) differs, the discrepancy in values is expected and does not constitute a logical contradiction. The two statements are therefore reconciled by recognizing the change from a projected figure to a later provisional actual figure."
+      "explanation": "Both facts refer to India's real GDP growth for FY24, but they are based on different reporting bases. Fact A is an advance projection (forecast) from the January 2023 Economic Survey, estimating growth at 6.5%. Fact B is an actual provisional estimate released by the CSO in May 2024, reporting growth at 8.2%. Because the scope (forecast vs actual) differs, the discrepancy in values is expected and does not constitute a logical contradiction. The two statements are therefore reconciled by recognizing the change from projection to realized provisional data."
     },
     {
       "id": "gold-009",
@@ -223,7 +223,7 @@
       "actual_review_reason": null,
       "label_correct": true,
       "safety_violation": false,
-      "explanation": "Both FACT A and FACT B refer to the same entity (Beta Logistics), the same attribute (Audited Net Profit), the same fiscal year (FY24), and the same consolidated scope, with identical qualifiers indicating a final audit. FACT A states the audited consolidated net profit was \u20b9150 Cr, while FACT B states it was \u20b985 Cr. Since the metric, period, scope, and audit status are identical, the differing values represent an irreconcilable discrepancy with no provided footnote, restatement, or alternative accounting basis to explain the difference. Therefore the two assertions directly contradict each other."
+      "explanation": "Both FACT A and FACT B refer to the same entity (Beta Logistics), the same attribute (Audited Net Profit), the same fiscal year (FY24), and the same consolidated scope, with identical qualifiers indicating a final audit. FACT A states the audited consolidated net profit was \u20b9150 Cr, while FACT B states it was \u20b985 Cr. There is no indication of differing accounting definitions, adjustments, or restatement bases that could reconcile the discrepancy. Therefore, the two statements present mutually exclusive values for an identical metric, constituting a direct contradiction."
     },
     {
       "id": "gold-017",
@@ -249,7 +249,7 @@
       "actual_review_reason": null,
       "label_correct": true,
       "safety_violation": false,
-      "explanation": "Both facts refer to Delhivery Limited's revenue from operations for FY24, but they are measured on different reporting scopes. Fact A reports the consolidated revenue (\u20b98,142 Cr) while Fact B reports the standalone revenue (\u20b97,905 Cr). Because consolidated figures include the results of subsidiaries and other entities under Delhivery's control, they are expected to be higher than the standalone figure, which reflects only the parent company's operations. The discrepancy in values is therefore explained by the scope difference, not by an error or contradictory claim. Hence the two statements are reconciled through a scope accounting bridge."
+      "explanation": "Both facts refer to Delhivery Limited's revenue from operations for FY24, but they are reported on different bases. Fact A states the consolidated revenue (\u20b98,142\u202fCr) while Fact B states the standalone revenue (\u20b97,905\u202fCr). Consolidated figures include the parent company and all subsidiaries, whereas standalone figures reflect only the parent entity. The difference in values is therefore explained by the scope difference, not by a factual inconsistency. The evidence quotes explicitly label each figure as \"Consolidated revenue from operations\" and \"Standalone revenue from operations,\" confirming the distinct reporting bases."
     },
     {
       "id": "gold-019",
@@ -275,7 +275,7 @@
       "actual_review_reason": null,
       "label_correct": true,
       "safety_violation": false,
-      "explanation": "Both facts refer to Delhivery Limited\u2019s adjusted EBITDA and use the same accounting definition (adjusted). The discrepancy in values arises solely from the period covered. Fact\u202fA reports FY24 (April\u202f2023\u2011March\u202f2024) adjusted EBITDA of \u20b976\u202fCr, while Fact\u202fB reports the trailing\u2011twelve\u2011months ending June\u202f2024, which includes FY24 plus the first quarter of FY25 (April\u2011June\u202f2024). The TTM figure of \u20b9105\u202fCr therefore naturally exceeds the FY24 figure by the amount earned in Q1\u202fFY25 (\u2248\u20b929\u202fCr). No other scope, qualifier, or accounting basis differences are present, so the two facts are reconciled by the period definition. Evidence: Fact\u202fA quote \u2013 \u201cFull fiscal year FY24 adjusted EBITDA reached \u20b976\u202fCr\u201d; Fact\u202fB quote \u2013 \u201cTrailing twelve months (TTM) adjusted EBITDA rose to \u20b9105\u202fCr ending Q1\u202fFY25.\u201d"
+      "explanation": "Both facts refer to Delhivery Limited's Adjusted EBITDA and use the same accounting definition (adjusted). However, the time periods differ: Fact A reports the Adjusted EBITDA for the full fiscal year FY24 (\u20b976\u202fCr), while Fact B reports Adjusted EBITDA for the trailing twelve months ending June 2024 (TTM), which covers FY24 plus the first quarter of FY25 and therefore yields a higher figure (\u20b9105\u202fCr). Because the discrepancy is fully explained by the differing reporting periods, the two statements are not contradictory but reconciled through a period basis difference."
     },
     {
       "id": "gold-021",
@@ -288,7 +288,7 @@
       "actual_review_reason": null,
       "label_correct": true,
       "safety_violation": false,
-      "explanation": "Both facts refer to Delhivery Limited's revenue growth rate for FY24, but they are measured on different bases. Fact A reports the \"reported\" (local currency) year\u2011on\u2011year growth of 13.2%, while Fact B reports the \"constant currency\" growth of 15.0%. Constant\u2011currency figures remove the impact of foreign\u2011exchange fluctuations, which can cause a higher growth rate than the reported figure. Because the attribute, entity, and period are identical but the scope differs, the discrepancy is explainable and does not constitute a contradiction. The two statements are therefore reconciled through a currency\u2011basis adjustment."
+      "explanation": "Both facts refer to Delhivery Limited's revenue growth rate for FY24, but they are measured on different bases. Fact A reports the \"reported\" (actual) year\u2011on\u2011year revenue growth of 13.2%, while Fact B reports the \"constant currency\" revenue growth of 15.0%. Constant\u2011currency figures remove the impact of foreign\u2011exchange fluctuations, which can cause a legitimate difference from the reported figure. Because the entity, attribute, and period are identical but the scope (reporting basis) differs, the statements are not contradictory; they are reconcilable through a currency\u2011translation adjustment."
     }
   ]
 }

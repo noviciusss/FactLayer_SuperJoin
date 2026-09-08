@@ -79,6 +79,8 @@ class PDFParser:
 
                 # 2. Extract tables as structured markdown chunks
                 extracted_tables = plumber_page.extract_tables()
+                page_fragments: List[ParsedChunk] = []
+
                 for t_idx, table_data in enumerate(extracted_tables):
                     if not table_data or len(table_data) < 2:
                         continue
@@ -95,7 +97,7 @@ class PDFParser:
                         body = "\n".join(clean_rows[1:])
                         table_md = f"| {header} |\n| {separator} |\n" + "\n".join([f"| {r} |" for r in clean_rows[1:] if r.strip()])
                         
-                        chunks.append(ParsedChunk(
+                        page_fragments.append(ParsedChunk(
                             page_number=page_num,
                             char_start=0,
                             char_end=len(table_md),
@@ -131,13 +133,12 @@ class PDFParser:
                 is_low_text = char_count < 80 and len(plumber_page.images) > 0
 
                 if page_text:
-                    # Split into reasonable paragraph chunks if text is long
                     paragraphs = [p.strip() for p in page_text.split("\n\n") if p.strip()]
                     running_pos = 0
                     for p in paragraphs:
-                        if len(p) < 20:  # Skip tiny headers/footers
-                            continue
-                        chunks.append(ParsedChunk(
+                        # CRITICAL SAFETY RULE: Never silently drop any chunk fragment during coalescing,
+                        # even a very short one. Every fragment must end up merged into some parent chunk.
+                        page_fragments.append(ParsedChunk(
                             page_number=page_num,
                             char_start=running_pos,
                             char_end=running_pos + len(p),
@@ -147,9 +148,9 @@ class PDFParser:
                             image_ref=preview_image_path
                         ))
                         running_pos += len(p) + 2
-                elif is_low_text:
+                elif is_low_text and not page_fragments:
                     # Page has almost no text but has images/charts (e.g. Infographic slide)
-                    chunks.append(ParsedChunk(
+                    page_fragments.append(ParsedChunk(
                         page_number=page_num,
                         char_start=0,
                         char_end=0,
@@ -159,9 +160,102 @@ class PDFParser:
                         image_ref=preview_image_path
                     ))
 
+                # Coalesce adjacent paragraph/sub-table fragments on the same page into chunks
+                coalesced_page = self.coalesce_page_chunks(page_fragments)
+                chunks.extend(coalesced_page)
+
         doc_fitz.close()
         doc_type = self.extract_document_type("\n".join(first_pages_text))
         return chunks, total_pages, doc_type
 
+    def coalesce_page_chunks(
+        self,
+        page_fragments: List[ParsedChunk],
+        max_chunk_size: Optional[int] = None
+    ) -> List[ParsedChunk]:
+        """
+        Coalesce adjacent paragraph and sub-table fragments on the same page into
+        a single chunk, up to max_chunk_size characters (~2000-2500 chars).
+        
+        Rules:
+        1. A detected table must stay intact as one chunk (or coalesced with adjacent
+           small table fragments), never split mid-table. If a single table fragment
+           is already >= max_chunk_size, it stays intact as its own chunk.
+        2. CRITICAL SAFETY RULE: Never drop or skip any fragment (even sub-100 chars,
+           e.g. '| 11 (5%) |'). Every fragment must end up merged into some parent chunk.
+        3. Preserves is_table=True if any coalesced fragment is a table.
+        4. Preserves needs_vision=True if any coalesced fragment needs vision.
+        """
+        if not page_fragments:
+            return []
+        if len(page_fragments) == 1:
+            return page_fragments
+
+        limit = max_chunk_size if max_chunk_size is not None else getattr(settings, "MAX_CHUNK_SIZE", 2400)
+        coalesced: List[ParsedChunk] = []
+        current_frags: List[ParsedChunk] = []
+        current_len = 0
+
+        for frag in page_fragments:
+            frag_len = len(frag.raw_text)
+            sep_len = 2 if current_frags else 0  # for "\n\n" separator
+
+            # If adding this fragment exceeds max_chunk_size and current_frags has items:
+            if current_frags and (current_len + sep_len + frag_len > limit):
+                # Flush accumulated fragments
+                merged_text = "\n\n".join(f.raw_text for f in current_frags)
+                first_img = next((f.image_ref for f in current_frags if f.image_ref), None)
+                coalesced.append(ParsedChunk(
+                    page_number=current_frags[0].page_number,
+                    char_start=0,
+                    char_end=len(merged_text),
+                    raw_text=merged_text,
+                    is_table=any(f.is_table for f in current_frags),
+                    needs_vision=any(f.needs_vision for f in current_frags),
+                    image_ref=first_img
+                ))
+                current_frags = [frag]
+                current_len = frag_len
+            else:
+                current_frags.append(frag)
+                current_len += sep_len + frag_len
+
+        if current_frags:
+            merged_text = "\n\n".join(f.raw_text for f in current_frags)
+            first_img = next((f.image_ref for f in current_frags if f.image_ref), None)
+            coalesced.append(ParsedChunk(
+                page_number=current_frags[0].page_number,
+                char_start=0,
+                char_end=len(merged_text),
+                raw_text=merged_text,
+                is_table=any(f.is_table for f in current_frags),
+                needs_vision=any(f.needs_vision for f in current_frags),
+                image_ref=first_img
+            ))
+
+        return coalesced
+
+    def coalesce_chunks(
+        self,
+        chunks: List[ParsedChunk],
+        max_chunk_size: Optional[int] = None
+    ) -> List[ParsedChunk]:
+        """
+        Coalesce chunks page-by-page across a document.
+        Groups fragments by page_number and coalesces fragments on the same page.
+        """
+        if not chunks:
+            return []
+        
+        pages: dict[int, List[ParsedChunk]] = {}
+        for c in chunks:
+            pages.setdefault(c.page_number, []).append(c)
+
+        result: List[ParsedChunk] = []
+        for page_num in sorted(pages.keys()):
+            result.extend(self.coalesce_page_chunks(pages[page_num], max_chunk_size=max_chunk_size))
+        return result
+
 
 pdf_parser = PDFParser()
+
