@@ -47,6 +47,7 @@ class Document(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     filename = Column(String(255), nullable=False)
     file_path = Column(String(512), nullable=True)
+    content_hash = Column(String(64), unique=True, index=True, nullable=True)
     page_count = Column(Integer, default=0)
     doc_type_guess = Column(String(100), nullable=True)  # e.g., "financial_filing", "macro_report"
     status = Column(Enum(JobStatus), default=JobStatus.QUEUED, nullable=False)

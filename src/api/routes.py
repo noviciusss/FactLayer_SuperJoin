@@ -1,4 +1,5 @@
 """FastAPI REST API routes per Section 4 of FACT_KNOWLEDGE_LAYER_SPEC.md."""
+import hashlib
 import os
 import shutil
 from typing import List, Optional
@@ -6,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from src.config import settings
-from src.db.models import Document, Fact, JobStatus, Relationship, RelationType
+from src.db.models import Chunk, Document, Fact, JobStatus, Relationship, RelationType
 from src.db.session import get_db
 from src.pipeline.orchestrator import orchestrator
 
@@ -19,6 +20,10 @@ class UploadResponse(BaseModel):
     job_id: str
     status: str
     filename: str
+    content_hash: Optional[str] = None
+    deduplicated: bool = False
+    facts_count: Optional[int] = None
+    message: Optional[str] = None
 
 
 class DocumentStatusResponse(BaseModel):
@@ -83,21 +88,104 @@ async def upload_document(
     db: Session = Depends(get_db)
 ):
     """
-    POST /documents: Upload a PDF document.
-    Returns 202 Accepted with document_id and job_id. Runs extraction asynchronously.
+    POST /documents: Upload a PDF document (Idempotent by SHA-256 content hash).
+
+    Idempotency Guarantees:
+    - Computes a SHA-256 hash of the raw uploaded file bytes prior to creating a Document record.
+    - If a Document with the identical content_hash already exists:
+        * status == DONE: Returns the existing document_id, status='done', facts_count, and
+          deduplicated=True immediately without re-running the extraction pipeline.
+        * status in [QUEUED, CHUNKING, EXTRACTING, RECONCILING]: Returns the in-flight document_id,
+          current status, and deduplicated=True without enqueuing a duplicate job.
+        * status == FAILED: Purges old Chunk/Fact rows, resets status to QUEUED, and re-enqueues
+          processing rather than creating duplicate Document rows.
+    - If no existing document matches content_hash:
+        * Creates a new Document with content_hash and starts background pipeline processing.
     """
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
+    # Read raw bytes and compute SHA-256 hash
+    file_bytes = await file.read()
+    content_hash = hashlib.sha256(file_bytes).hexdigest()
+
     # Save uploaded file
     target_path = settings.UPLOAD_DIR / file.filename
     with open(target_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(file_bytes)
 
-    # Create document record
+    # Content-hash idempotency check
+    existing_doc = db.query(Document).filter(Document.content_hash == content_hash).first()
+
+    if existing_doc:
+        # Case 1: Prior run completed successfully -> Return immediately without re-running pipeline
+        if existing_doc.status == JobStatus.DONE:
+            facts_count = db.query(Fact).filter(Fact.document_id == existing_doc.id).count()
+            return UploadResponse(
+                document_id=existing_doc.id,
+                job_id=existing_doc.id,
+                status=existing_doc.status.value,
+                filename=existing_doc.filename,
+                content_hash=existing_doc.content_hash,
+                deduplicated=True,
+                facts_count=facts_count,
+                message="Document already processed (status: done). Pipeline run bypassed via content-hash idempotency."
+            )
+
+        # Case 2: Document processing is currently in-flight -> Do not enqueue a duplicate job
+        if existing_doc.status in (
+            JobStatus.QUEUED,
+            JobStatus.CHUNKING,
+            JobStatus.EXTRACTING,
+            JobStatus.RECONCILING,
+        ):
+            return UploadResponse(
+                document_id=existing_doc.id,
+                job_id=existing_doc.id,
+                status=existing_doc.status.value,
+                filename=existing_doc.filename,
+                content_hash=existing_doc.content_hash,
+                deduplicated=True,
+                facts_count=None,
+                message=f"Document is currently in-flight (status: {existing_doc.status.value}). Duplicate job bypassed."
+            )
+
+        # Case 3: Prior run failed -> Reset old chunks/facts and re-enqueue without creating duplicate row
+        if existing_doc.status == JobStatus.FAILED:
+            doc_fact_ids = [f.id for f in db.query(Fact.id).filter(Fact.document_id == existing_doc.id).all()]
+            if doc_fact_ids:
+                db.query(Relationship).filter(
+                    (Relationship.fact_a_id.in_(doc_fact_ids)) | (Relationship.fact_b_id.in_(doc_fact_ids))
+                ).delete(synchronize_session=False)
+                db.query(Fact).filter(Fact.document_id == existing_doc.id).delete(synchronize_session=False)
+
+            db.query(Chunk).filter(Chunk.document_id == existing_doc.id).delete(synchronize_session=False)
+
+            existing_doc.status = JobStatus.QUEUED
+            existing_doc.error_message = None
+            existing_doc.filename = file.filename
+            existing_doc.file_path = str(target_path)
+            db.commit()
+            db.refresh(existing_doc)
+
+            background_tasks.add_task(run_pipeline_task, existing_doc.id)
+
+            return UploadResponse(
+                document_id=existing_doc.id,
+                job_id=existing_doc.id,
+                status=existing_doc.status.value,
+                filename=existing_doc.filename,
+                content_hash=existing_doc.content_hash,
+                deduplicated=False,
+                facts_count=0,
+                message="Previous processing failed. Old chunks and facts purged, job reset to queued and re-enqueued."
+            )
+
+    # Case 4: Not found -> create new document and enqueue
     doc = Document(
         filename=file.filename,
         file_path=str(target_path),
+        content_hash=content_hash,
         status=JobStatus.QUEUED
     )
     db.add(doc)
@@ -111,7 +199,11 @@ async def upload_document(
         document_id=doc.id,
         job_id=doc.id,
         status=doc.status.value,
-        filename=doc.filename
+        filename=doc.filename,
+        content_hash=doc.content_hash,
+        deduplicated=False,
+        facts_count=None,
+        message="Document uploaded and queued for processing."
     )
 
 

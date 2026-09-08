@@ -46,6 +46,13 @@ def init_db():
         except Exception as e:
             print(f"[init_db Migration Note] {e}")
 
+    # Content-hash migration for idempotency guard
+    try:
+        from src.db.migrations.add_content_hash import migrate_add_content_hash
+        migrate_add_content_hash(engine)
+    except Exception as e:
+        print(f"[init_db Migration Note - content_hash] {e}")
+
 
 def get_db():
     """Dependency for obtaining a database session."""
