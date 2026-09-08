@@ -42,7 +42,8 @@ services:
       - QDRANT_URL=http://qdrant:6333
       - LLM_PROVIDER=groq
       - LLM_MODEL=${LLM_MODEL:-openai/gpt-oss-20b}
-      - VISION_MODEL=${VISION_MODEL:-openai/gpt-oss-20b}
+      - VISION_MODEL=${VISION_MODEL:-qwen/qwen3.6-27b}
+      - ADJUDICATION_MODEL=${ADJUDICATION_MODEL:-openai/gpt-oss-120b}
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,7 +68,8 @@ services:
       - QDRANT_URL=http://qdrant:6333
       - LLM_PROVIDER=groq
       - LLM_MODEL=${LLM_MODEL:-openai/gpt-oss-20b}
-      - VISION_MODEL=${VISION_MODEL:-openai/gpt-oss-20b}
+      - VISION_MODEL=${VISION_MODEL:-qwen/qwen3.6-27b}
+      - ADJUDICATION_MODEL=${ADJUDICATION_MODEL:-openai/gpt-oss-120b}
     depends_on:
       - backend
     volumes:

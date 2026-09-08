@@ -3,6 +3,7 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Tuple
 
+from src.config import settings
 from src.db.models import Fact, RelationType
 from src.pipeline.llm_client import llm_client
 from src.pipeline.schemas import ReconciliationDecision
@@ -438,7 +439,8 @@ If RECONCILED, identify the exact reconciliation_basis.
             llm_decision: ReconciliationDecision = llm_client.extract_structured(
                 prompt=user_prompt,
                 system_prompt=RECONCILIATION_SYSTEM_PROMPT,
-                response_model=ReconciliationDecision
+                response_model=ReconciliationDecision,
+                model=settings.ADJUDICATION_MODEL
             )
             llm_decision.decision_route = "llm_adjudication"
             llm_decision.comparison_snapshot = snapshot

@@ -19,6 +19,11 @@ class SelfChecker:
         Verify that evidence_quote is genuinely grounded in the source chunk.
         Returns: (is_valid, adjusted_confidence, reason)
         """
+        # Check if extracted via two-hop vision path (has no independent text grounding check)
+        if fact.qualifiers and fact.qualifiers.get("extraction_path") == "vision":
+            capped_conf = round(min(fact.confidence, 0.7), 2)
+            return True, capped_conf, "Vision extraction path (confidence capped at 0.7)"
+
         if not fact.evidence_quote or not fact.evidence_quote.strip():
             return False, 0.0, "Missing evidence quote"
 

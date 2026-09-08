@@ -288,3 +288,55 @@ def test_t12_numeric_decimals_deterministic():
     assert extract_numeric("-12.45") == Decimal("-12.45")
     assert extract_numeric(None) is None
     assert extract_numeric("Text with no numbers") is None
+
+
+def test_adjudication_uses_adjudication_model():
+    """TASK 2: Verify LLM adjudication explicitly passes ADJUDICATION_MODEL and validates schema."""
+    from unittest.mock import patch
+    from src.config import settings
+    from src.pipeline.schemas import ReconciliationDecision
+
+    fact_a = Fact(
+        id="f-adj-1",
+        chunk_id="c-1",
+        document_id="doc-1",
+        entity="Delhivery",
+        attribute="EBITDA",
+        value="127",
+        unit="₹ Cr",
+        period="FY24",
+        scope="reported",
+        evidence_quote="Reported EBITDA was ₹127 Cr",
+        confidence=0.95
+    )
+    fact_b = Fact(
+        id="f-adj-2",
+        chunk_id="c-2",
+        document_id="doc-2",
+        entity="Delhivery",
+        attribute="EBITDA",
+        value="76",
+        unit="₹ Cr",
+        period="FY24",
+        scope="adjusted",
+        evidence_quote="Adjusted EBITDA was ₹76 Cr",
+        confidence=0.95
+    )
+
+    mock_resp = ReconciliationDecision(
+        relation_type=RelationType.RECONCILED,
+        explanation="Reconciled via ESOP add-backs",
+        confidence=0.92,
+        reconciliation_basis="Accounting scope adjustment"
+    )
+
+    with patch("src.pipeline.reconciliation.llm_client.extract_structured", return_value=mock_resp) as mock_extract:
+        decision = reconciliation_engine.reconcile_pair(fact_a, fact_b)
+
+        assert mock_extract.called
+        call_kwargs = mock_extract.call_args.kwargs
+        assert call_kwargs.get("model") == settings.ADJUDICATION_MODEL
+        assert decision.relation_type == RelationType.RECONCILED
+        assert decision.decision_route == "llm_adjudication"
+        assert decision.reconciliation_basis == "Accounting scope adjustment"
+

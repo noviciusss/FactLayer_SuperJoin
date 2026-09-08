@@ -79,3 +79,24 @@ def test_t04_idempotent_duplicate_deduplication():
 
     # Only 1 unique fact should survive deduplication
     assert len(verified) == 1
+
+
+def test_vision_extraction_path_grounding_pass():
+    """TASK 1: Facts marked with extraction_path='vision' pass self-check and have confidence capped at 0.7."""
+    vision_fact = ExtractedFact(
+        entity="Delhivery Limited",
+        attribute="Hub Count",
+        value="24",
+        unit="hubs",
+        period="FY24",
+        scope="operational",
+        qualifiers={"extraction_path": "vision"},
+        evidence_quote="Infographic shows 24 automated hubs",
+        confidence=0.92
+    )
+
+    is_valid, adjusted_conf, reason = self_checker.verify_grounding(vision_fact, "completely different chunk text")
+    assert is_valid is True
+    assert adjusted_conf == 0.7
+    assert "Vision extraction path" in reason
+

@@ -41,20 +41,48 @@ class FactExtractor:
             return []
 
     def extract_from_chunk_vision(self, image_path: str, page_num: int, doc_type: Optional[str] = None) -> List[ExtractedFact]:
-        """Multimodal extraction for image/chart slides."""
+        """
+        Two-hop vision extraction:
+        1. Plain-text visual description/transcription via vision model (qwen/qwen3.6-27b)
+        2. Structured Fact extraction via existing text extractor (openai/gpt-oss-20b)
+        3. Flag with extraction_path="vision" and cap confidence at 0.7
+        """
         p = Path(image_path)
         if not p.exists():
             return []
         try:
             image_bytes = p.read_bytes()
-            user_prompt = f"Page {page_num} of document (slide / infographic).\nExtract all visible numeric metrics, chart data points, and factual statements into Fact objects."
-            res: FactExtractionResponse = llm_client.extract_vision_structured(
-                image_bytes=image_bytes,
-                prompt=user_prompt,
-                system_prompt=SYSTEM_EXTRACTION_PROMPT,
-                response_model=FactExtractionResponse
+
+            # Hop 1: Send image to vision model for plain-text description of numbers and labels
+            vision_prompt = (
+                f"Page {page_num} of document (slide / infographic).\n"
+                "Transcribe and describe in detail all visible numbers, labels, metrics, tables, chart points, "
+                "and their visual association (which label belongs to which number)."
             )
-            return res.facts
+            transcription = llm_client.transcribe_image(
+                image_bytes=image_bytes,
+                prompt=vision_prompt,
+                model=settings.VISION_MODEL
+            )
+
+            if not transcription or not transcription.strip():
+                return []
+
+            # Hop 2: Pipe transcription through existing extractor in strict json_schema mode
+            extracted_facts = self.extract_from_chunk_text(
+                chunk_text=transcription,
+                page_num=page_num,
+                doc_type=doc_type
+            )
+
+            # Hop 3: Flag with extraction_path="vision" and cap confidence at 0.7
+            for fact in extracted_facts:
+                if fact.qualifiers is None:
+                    fact.qualifiers = {}
+                fact.qualifiers["extraction_path"] = "vision"
+                fact.confidence = min(fact.confidence, 0.7)
+
+            return extracted_facts
         except Exception as e:
             print(f"[FactExtractor Vision] Error extracting from page {page_num}: {e}")
             return []

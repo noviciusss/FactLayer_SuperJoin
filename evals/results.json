@@ -1,20 +1,20 @@
 {
   "benchmark_name": "DealGuard Gold Evaluation Set",
-  "commit_sha": "315fad8005515fdbee458b8278e5a9c7f95290a6",
-  "timestamp": "2026-09-07T18:14:29.764844Z",
-  "total_cases": 16,
+  "commit_sha": "64774e4aa8aaa2c10ecc6f5380e0758daa776205",
+  "timestamp": "2026-09-08T06:02:30.452802Z",
+  "total_cases": 21,
   "metrics": {
-    "relationship_accuracy": 0.9375,
+    "relationship_accuracy": 0.9524,
     "review_recall": 1.0,
     "unsafe_auto_decision_rate": 0.0,
-    "llm_avoidance_rate": 0.8125,
+    "llm_avoidance_rate": 0.6667,
     "safety_violations_count": 0
   },
   "breakdown": {
-    "correct_labels": 15,
-    "unsafe_gold_cases": 4,
-    "correctly_blocked_unsafe": 4,
-    "llm_avoided_count": 13
+    "correct_labels": 20,
+    "unsafe_gold_cases": 5,
+    "correctly_blocked_unsafe": 5,
+    "llm_avoided_count": 14
   },
   "cases": [
     {
@@ -93,20 +93,20 @@
       "actual_review_reason": null,
       "label_correct": true,
       "safety_violation": false,
-      "explanation": "Both facts refer to Delhivery\u2019s EBITDA for FY24, but they use different reporting bases. Fact\u202fA reports the company\u2019s *reported EBITDA* of \u20b9127\u202fCr, which includes all items such as share\u2011based payments (ESOP) and lease rent. Fact\u202fB reports an *adjusted EBITDA* of \u20b976\u202fCr, explicitly excluding ESOP and lease rent adjustments. Because the two metrics are calculated on different bases, they are not contradictory; rather, they represent two distinct measures of operating performance. The reconciliation is that the adjusted figure is derived from the reported figure by subtracting the ESOP and lease rent adjustments, yielding a lower EBITDA of \u20b976\u202fCr."
+      "explanation": "Both facts refer to Delhivery's EBITDA for FY24, but they measure different concepts. Fact A reports the company's standard (GAAP) EBITDA of \u20b9127\u202fCr, explicitly labelled as \"reported_ebitda\". Fact B reports an \"adjusted_ebitda\" of \u20b976\u202fCr, which excludes share\u2011based payments and lease rent adjustments. Because the scope (reported vs adjusted) and the accounting basis differ, the values are not expected to match. The discrepancy is therefore explained by the differing definitions rather than a factual error, so the two statements are reconciled through the accounting definition bridge."
     },
     {
       "id": "gold-007",
       "description": "Pro Forma FY22 restatement vs historical actuals (SpotOn acquisition bridge)",
       "expected_relation": "RECONCILED",
-      "actual_relation": "NEEDS_REVIEW",
+      "actual_relation": "RECONCILED",
       "expected_route": "llm_adjudication",
-      "actual_route": "ambiguity_firewall",
+      "actual_route": "llm_adjudication",
       "expected_review_reason": null,
-      "actual_review_reason": "adjudication_unavailable",
-      "label_correct": false,
+      "actual_review_reason": null,
+      "label_correct": true,
       "safety_violation": false,
-      "explanation": "Ambiguity Firewall: LLM adjudication unavailable or returned malformed output (2 validation errors for ReconciliationDecision\nrelation_type\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nexplanation\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing). Refusing to guess."
+      "explanation": "Both facts refer to Delhivery's revenue from operations for FY22, but they are measured on different reporting bases. Fact A is a pro forma revenue figure that incorporates the SpotOn acquisition, resulting in a higher amount of \u20b97,054\u202fCr. Fact B reports the historical actual revenue, which excludes the acquisition, and therefore shows a lower amount of \u20b96,881\u202fCr. The discrepancy in values is fully explained by the differing scope (pro forma vs historical actual) and the explicit qualifier that Fact A includes the SpotOn acquisition while Fact B has no restatement. Hence the two numbers are reconcilable rather than contradictory."
     },
     {
       "id": "gold-008",
@@ -119,7 +119,7 @@
       "actual_review_reason": null,
       "label_correct": true,
       "safety_violation": false,
-      "explanation": "Both facts refer to India\u2019s real GDP growth for FY24, but they are based on different reporting bases. Fact\u202fA is an advance projection of 6.5\u202f% from the January\u202f2023 Economic Survey, while Fact\u202fB is an actual provisional estimate of 8.2\u202f% released by the CSO in May\u202f2024. Because the scope differs\u2014forecast versus actual\u2014the values are not directly comparable and therefore do not contradict each other. The reconciliation is that the 6.5\u202f% figure represents an expected growth rate, whereas the 8.2\u202f% figure reflects the observed growth as of the provisional estimate. This is a classic forecast\u2011vs\u2011actual reconciliation."
+      "explanation": "Both facts refer to India's real GDP growth for FY24, but they are based on different reporting bases. Fact A is an advance projection (forecast) from the January 2023 Economic Survey, estimating growth at 6.5%. Fact B is an actual provisional estimate released by the CSO in May 2024, reporting growth at 8.2%. Because the scope (forecast vs actual) differs, the discrepancy in values is expected and does not constitute a logical contradiction. The two statements are therefore reconciled by recognizing the change from a projected figure to a later provisional actual figure."
     },
     {
       "id": "gold-009",
@@ -223,7 +223,72 @@
       "actual_review_reason": null,
       "label_correct": true,
       "safety_violation": false,
-      "explanation": "Both facts refer to the same entity (Beta Logistics), attribute (Audited Net Profit), period (FY24), scope (consolidated), and qualifiers (audit_status: final). The values reported are \u20b9150\u202fCr and \u20b985\u202fCr, respectively, with no indication of differing accounting definitions, pro\u2011forma adjustments, or other reconciliatory bases. The evidence quotes explicitly state the audited consolidated net profit figures: \"Audited consolidated net profit for FY24 was \u20b9150 Cr\" versus \"Audited consolidated net profit for FY24 was certified at \u20b985 Cr.\" Since the metrics are identical in scope and reporting basis, the discrepancy is genuine and irreconcilable without additional context. Therefore the facts contradict each other."
+      "explanation": "Both FACT A and FACT B refer to the same entity (Beta Logistics), the same attribute (Audited Net Profit), the same fiscal year (FY24), and the same consolidated scope, with identical qualifiers indicating a final audit. FACT A states the audited consolidated net profit was \u20b9150 Cr, while FACT B states it was \u20b985 Cr. Since the metric, period, scope, and audit status are identical, the differing values represent an irreconcilable discrepancy with no provided footnote, restatement, or alternative accounting basis to explain the difference. Therefore the two assertions directly contradict each other."
+    },
+    {
+      "id": "gold-017",
+      "description": "Ambiguity Firewall: Unit scale ambiguity (Crore vs Lakh without scalar converter)",
+      "expected_relation": "NEEDS_REVIEW",
+      "actual_relation": "NEEDS_REVIEW",
+      "expected_route": "ambiguity_firewall",
+      "actual_route": "ambiguity_firewall",
+      "expected_review_reason": "unit_ambiguity",
+      "actual_review_reason": "unit_ambiguity",
+      "label_correct": true,
+      "safety_violation": false,
+      "explanation": "Ambiguity Firewall: Units '\u20b9 Cr' and '\u20b9 Lakh' are incompatible without a confirmed exchange rate or conversion formula."
+    },
+    {
+      "id": "gold-018",
+      "description": "Consolidation scope difference (Consolidated vs Standalone parent entity)",
+      "expected_relation": "RECONCILED",
+      "actual_relation": "RECONCILED",
+      "expected_route": "llm_adjudication",
+      "actual_route": "llm_adjudication",
+      "expected_review_reason": null,
+      "actual_review_reason": null,
+      "label_correct": true,
+      "safety_violation": false,
+      "explanation": "Both facts refer to Delhivery Limited's revenue from operations for FY24, but they are measured on different reporting scopes. Fact A reports the consolidated revenue (\u20b98,142 Cr) while Fact B reports the standalone revenue (\u20b97,905 Cr). Because consolidated figures include the results of subsidiaries and other entities under Delhivery's control, they are expected to be higher than the standalone figure, which reflects only the parent company's operations. The discrepancy in values is therefore explained by the scope difference, not by an error or contradictory claim. Hence the two statements are reconciled through a scope accounting bridge."
+    },
+    {
+      "id": "gold-019",
+      "description": "Known limitation: Undated slide infographic (Human resolvable, System routes to NEEDS_REVIEW)",
+      "expected_relation": "CORROBORATES",
+      "actual_relation": "NEEDS_REVIEW",
+      "expected_route": "deterministic_exact",
+      "actual_route": "ambiguity_firewall",
+      "expected_review_reason": null,
+      "actual_review_reason": "missing_period",
+      "label_correct": false,
+      "safety_violation": false,
+      "explanation": "Ambiguity Firewall: Both facts assert numerical figures for 'Total Pincode Reach', but reporting period is missing on Fact B. Refusing to make an automated comparison without aligned timeframes."
+    },
+    {
+      "id": "gold-020",
+      "description": "Timeframe vintage / rolling window (Trailing Twelve Months vs Full Fiscal Year)",
+      "expected_relation": "RECONCILED",
+      "actual_relation": "RECONCILED",
+      "expected_route": "llm_adjudication",
+      "actual_route": "llm_adjudication",
+      "expected_review_reason": null,
+      "actual_review_reason": null,
+      "label_correct": true,
+      "safety_violation": false,
+      "explanation": "Both facts refer to Delhivery Limited\u2019s adjusted EBITDA and use the same accounting definition (adjusted). The discrepancy in values arises solely from the period covered. Fact\u202fA reports FY24 (April\u202f2023\u2011March\u202f2024) adjusted EBITDA of \u20b976\u202fCr, while Fact\u202fB reports the trailing\u2011twelve\u2011months ending June\u202f2024, which includes FY24 plus the first quarter of FY25 (April\u2011June\u202f2024). The TTM figure of \u20b9105\u202fCr therefore naturally exceeds the FY24 figure by the amount earned in Q1\u202fFY25 (\u2248\u20b929\u202fCr). No other scope, qualifier, or accounting basis differences are present, so the two facts are reconciled by the period definition. Evidence: Fact\u202fA quote \u2013 \u201cFull fiscal year FY24 adjusted EBITDA reached \u20b976\u202fCr\u201d; Fact\u202fB quote \u2013 \u201cTrailing twelve months (TTM) adjusted EBITDA rose to \u20b9105\u202fCr ending Q1\u202fFY25.\u201d"
+    },
+    {
+      "id": "gold-021",
+      "description": "Accounting measurement convention (Constant Currency vs Reported Currency Growth)",
+      "expected_relation": "RECONCILED",
+      "actual_relation": "RECONCILED",
+      "expected_route": "llm_adjudication",
+      "actual_route": "llm_adjudication",
+      "expected_review_reason": null,
+      "actual_review_reason": null,
+      "label_correct": true,
+      "safety_violation": false,
+      "explanation": "Both facts refer to Delhivery Limited's revenue growth rate for FY24, but they are measured on different bases. Fact A reports the \"reported\" (local currency) year\u2011on\u2011year growth of 13.2%, while Fact B reports the \"constant currency\" growth of 15.0%. Constant\u2011currency figures remove the impact of foreign\u2011exchange fluctuations, which can cause a higher growth rate than the reported figure. Because the attribute, entity, and period are identical but the scope differs, the discrepancy is explainable and does not constitute a contradiction. The two statements are therefore reconciled through a currency\u2011basis adjustment."
     }
   ]
 }

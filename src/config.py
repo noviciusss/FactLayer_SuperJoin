@@ -24,7 +24,8 @@ class Settings(BaseSettings):
     GROQ_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     LLM_MODEL: str = "llama-3.3-70b-versatile"
-    VISION_MODEL: str = "llama-3.2-11b-vision-preview"
+    VISION_MODEL: str = "qwen/qwen3.6-27b"
+    ADJUDICATION_MODEL: str = "openai/gpt-oss-120b"
     FAST_CHECK_MODEL: str = "llama-3.1-8b-instant"
 
     # Embedding & Vector Store

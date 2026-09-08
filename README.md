@@ -8,7 +8,7 @@
 
 ## 1. Problem Statement
 
-Financial analysts preparing IPO prospectuses and S-1 filings manage metrics scattered across annual reports, draft prospectuses, quarterly investor presentations, statutory disclosures, and macroeconomic releases. The same financial metric frequently differs due to reporting timeframe (`Q4 FY24` vs `FY24`), consolidation scope (`standalone` vs `consolidated`), accounting convention (`reported` vs `adjusted` EBITDA), pro forma acquisition restatements (SpotOn acquisition), or dropped table headers during PDF parsing. Standard LLM pipelines blindly compare numbers based on semantic similarity, converting missing reporting context into confident, hallucinated financial contradictions. In financial due diligence, **a false contradiction is worse than an abstention**. DealGuard extracts evidence-grounded facts from dense documents, reconciles them across filings, and refuses unsafe comparisons when the reporting basis is incomplete.
+Financial analysts preparing IPO prospectuses and S-1 filings manage metrics scattered across annual reports, draft prospectuses, quarterly investor presentations, statutory disclosures, and macroeconomic releases. The same financial metric frequently differs due to reporting timeframe (`Q4 FY24` vs `FY24`), consolidation scope (`standalone` vs `consolidated`), accounting convention (`reported` vs `adjusted` EBITDA), pro forma acquisition restatements (SpotOn acquisition), or dropped table headers during PDF parsing. Standard LLM pipelines blindly compare numbers based on semantic similarity, converting missing reporting context into confident, hallucinated financial contradictions. In institutional financial due diligence, equity research, and M&A valuation work broadly, audit workflows cannot tolerate stochastic guesses: an undetected discrepancy or a phantom contradiction can derail regulatory clearance, distort DCF projections, and undermine transaction pricing. In financial due diligence, **a false contradiction is worse than an abstention**. DealGuard extracts evidence-grounded facts from dense documents, reconciles them across filings, and refuses unsafe comparisons when the reporting basis is incomplete.
 
 ---
 
@@ -134,7 +134,9 @@ DealGuard introduces an **Ambiguity Firewall** and an auditable **Decision Ledge
 
 ## 6. Empirical Evaluation: Gold Set Benchmark Results
 
-DealGuard is evaluated using a versioned gold set (`evals/gold_relationships.jsonl`) of 16 curated test cases spanning corroboration, reconciliation, contradiction, unrelated pre-filters, and Ambiguity Firewall safety catches.
+DealGuard is evaluated using a versioned gold set (`evals/gold_relationships.jsonl`) of 21 curated test cases spanning corroboration, accounting reconciliation, genuine contradictions, unrelated pre-filters, unit-scale ambiguities, consolidation scopes, and Ambiguity Firewall safety catches.
+
+Empirical evaluation in high-stakes domain NLP demonstrates that providing a model with an explicit low-confidence / selective abstention path drastically reduces hallucinated judgments under epistemic uncertainty, justifying why `NEEDS_REVIEW` operates as an auditable first-class verdict rather than forcing every relationship into an artificial binary classification.
 
 ```bash
 python evals/evaluator.py
@@ -144,10 +146,10 @@ python evals/evaluator.py
 
 | Metric | Measured Value | Benchmark Definition |
 |---|---|---|
-| **Relationship Accuracy** | **100.0%** | Proportion of fact pairs matching expected gold relationship label |
-| **Review Recall (Safety)** | **100.0%** | Proportion of unsafe/ambiguous fact pairs intercepted by Ambiguity Firewall |
+| **Relationship Accuracy** | **95.2%** | Proportion of fact pairs matching expected gold relationship label (20/21) |
+| **Review Recall (Safety)** | **100.0%** | Proportion of unsafe/ambiguous fact pairs intercepted by Ambiguity Firewall (5/5) |
 | **Unsafe Auto-Decision Rate** | **0.0%** | Ambiguous cases mistakenly asserted without review (Target: 0.0%) |
-| **LLM Avoidance Rate** | **75.0%** | Candidate pairs resolved deterministically without calling LLM |
+| **LLM Avoidance Rate** | **66.7%** | Candidate pairs resolved deterministically without calling LLM |
 | **Safety Violations** | **0** | Dangerous decisions violating exclusion constraints |
 
 ---
@@ -168,7 +170,8 @@ python evals/evaluator.py
    GROQ_API_KEY=your_groq_api_key_here
    LLM_PROVIDER=groq
    LLM_MODEL=openai/gpt-oss-20b
-   VISION_MODEL=openai/gpt-oss-20b
+   VISION_MODEL=qwen/qwen3.6-27b
+   ADJUDICATION_MODEL=openai/gpt-oss-120b
    DATABASE_URL=sqlite:///./data/fact_layer.db
    QDRANT_URL=
    EMBEDDING_MODEL=BAAI/bge-small-en-v1.5

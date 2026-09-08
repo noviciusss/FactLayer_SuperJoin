@@ -149,6 +149,56 @@ class LLMClient:
             # If vision is not supported or fails, return empty result gracefully
             return response_model()
 
+    def transcribe_image(
+        self,
+        image_bytes: bytes,
+        prompt: Optional[str] = None,
+        model: Optional[str] = None
+    ) -> str:
+        """
+        Sends page image to vision model (e.g. qwen/qwen3.6-27b) asking for a plain-text
+        description/transcription of numbers, labels, and their visual association.
+        """
+        client = self._get_client()
+        target_model = model or settings.VISION_MODEL
+        default_prompt = (
+            "Transcribe and describe all visible numbers, labels, financial metrics, table cells, "
+            "chart data points, and their visual associations (which label belongs to which number) "
+            "from this document page in plain text."
+        )
+        user_prompt = prompt or default_prompt
+
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        data_url = f"data:image/png;base64,{base64_image}"
+
+        try:
+            chat_completion = client.chat.completions.create(
+                model=target_model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an expert document vision transcription assistant. "
+                            "Accurately describe all text, numbers, metrics, and labels visible in the image, "
+                            "explicitly indicating which label or metric name is associated with each number."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": user_prompt},
+                            {"type": "image_url", "image_url": {"url": data_url}}
+                        ]
+                    }
+                ],
+                temperature=0.0,
+                max_tokens=1000
+            )
+            return chat_completion.choices[0].message.content or ""
+        except Exception as e:
+            print(f"[LLMClient Vision Error] Image transcription failed with {target_model}: {e}")
+            return ""
+
 
 # Singleton instance
 llm_client = LLMClient()
